@@ -12,15 +12,17 @@ end
 require 'rake'
 
 require 'jeweler'
+require './lib/serf/version.rb'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
   gem.name = "serf"
   gem.homepage = "http://github.com/byu/serf"
   gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.summary = %Q{Event-Driven SOA with CQRS}
+  gem.description = %Q{Event-Driven SOA with CQRS}
   gem.email = "benjaminlyu@gmail.com"
   gem.authors = ["Benjamin Yu"]
+  gem.version = Serf::Version::STRING
   # dependencies defined in Gemfile
 end
 Jeweler::RubygemsDotOrgTasks.new
