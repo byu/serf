@@ -4,7 +4,7 @@ module Serf
     MAJOR = 0
     MINOR = 1
     PATCH = 0
-    BUILD = 'dev'
+    BUILD = 'alpha1'
     STRING = [MAJOR, MINOR, PATCH, BUILD].compact.join '.'
   end
 
