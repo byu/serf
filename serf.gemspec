@@ -38,6 +38,7 @@ Gem::Specification.new do |s|
     "lib/serf/receivers/msgpack_receiver.rb",
     "lib/serf/receivers/redis_pubsub_receiver.rb",
     "lib/serf/version.rb",
+    "serf.gemspec",
     "spec/serf_spec.rb",
     "spec/spec_helper.rb"
   ]
