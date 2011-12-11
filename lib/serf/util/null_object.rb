@@ -1,4 +1,5 @@
 module Serf
+module Util
 
   ##
   # A simple NullOject pattern implementation for some Serf code that
@@ -10,4 +11,5 @@ module Serf
     end
   end
 
+end
 end

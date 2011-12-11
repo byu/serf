@@ -2,6 +2,8 @@ require 'active_support/core_ext/hash'
 require 'multi_json'
 require "redis"
 
+require 'serf/util/null_object'
+
 module Serf
 
   ##
@@ -15,7 +17,7 @@ module Serf
 
       @redis = options.fetch(:redis) { Redis.connect }
       @channel = options.fetch(:channel) { 'serf_pubsub_channel' }
-      @logger = options.fetch(:logger) { ::Serf::NullObject.new }
+      @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
     end
 
     ##

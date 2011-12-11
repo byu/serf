@@ -1,6 +1,8 @@
 require 'active_support/core_ext/hash'
 require 'msgpack/rpc'
 
+require 'serf/util/null_object'
+
 module Serf
 
   ##
@@ -10,13 +12,13 @@ module Serf
   class MsgpackHandler
     def initialize(app, options={})
       @app = app
-      @logger = options.fetch(:logger) { ::Serf::NullObject.new }
+      @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
     end
 
     def call(env)
       @app.call env.stringify_keys
     rescue => e
-      @logger = options.fetch(:logger) { ::Serf::NullObject.new }
+      @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
       # We reraise this error so it's passed on through to the remote client.
       raise e
     end

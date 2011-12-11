@@ -1,5 +1,7 @@
 require 'eventmachine'
 
+require 'serf/util/null_object'
+
 module Serf
 module Middleware
 
@@ -7,7 +9,7 @@ module Middleware
     def initialize(app, options={})
       @em = options.fetch(:event_machine) { EM }
       @app = app
-      @logger = options.fetch(:logger) { ::Serf::NullObject.new }
+      @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
     end
 
     def call(env)

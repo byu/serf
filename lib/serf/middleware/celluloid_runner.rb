@@ -1,5 +1,7 @@
 require 'celluloid'
 
+require 'serf/util/null_object'
+
 module Serf
 module Middleware
 
@@ -10,7 +12,7 @@ module Middleware
 
     def initialize(app, options={})
       actor_class = options.fetch(:actor_class) { CelluloidRunnerActor }
-      @logger = options.fetch(:logger) { ::Serf::NullObject.new }
+      @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
       @actor = actor_class.new app, logger: @logger
     end
 
@@ -31,7 +33,7 @@ module Middleware
 
     def initialize(app, options={})
       @app = app
-      @logger = options.fetch(:logger) { ::Serf::NullObject.new }
+      @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
     end
 
     def call(message)
