@@ -3,7 +3,8 @@ source 'http://rubygems.org'
 # Example:
 #   gem 'activesupport', '>= 2.3.5'
 
-gem 'activesupport', '~> 3.1.1'
+gem 'activemodel', '~> 3.1.3'
+gem 'activesupport', '~> 3.1.3'
 gem 'eventmachine', '~> 0.12.10'
 gem 'i18n', '~> 0.6.0'
 gem 'msgpack', '~> 0.4.6'
