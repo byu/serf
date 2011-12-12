@@ -5,14 +5,13 @@
 
 Gem::Specification.new do |s|
   s.name = "serf"
-  s.version = "0.1.0.alpha1"
+  s.version = "0.2.0.alpha1"
 
   s.required_rubygems_version = Gem::Requirement.new("> 1.3.1") if s.respond_to? :required_rubygems_version=
   s.authors = ["Benjamin Yu"]
-  s.date = "2011-11-03"
+  s.date = "2011-12-12"
   s.description = "Event-Driven SOA with CQRS"
   s.email = "benjaminlyu@gmail.com"
-  s.executables = ["serfup"]
   s.extra_rdoc_files = [
     "LICENSE.txt",
     "README.md"
@@ -26,24 +25,19 @@ Gem::Specification.new do |s|
     "NOTICE.txt",
     "README.md",
     "Rakefile",
-    "bin/serfup",
-    "examples/config.su",
     "lib/serf.rb",
     "lib/serf/builder.rb",
-    "lib/serf/emitters/redis_emitter.rb",
-    "lib/serf/middleware/celluloid_runner.rb",
-    "lib/serf/middleware/em_runner.rb",
-    "lib/serf/middleware/kind_mapper.rb",
-    "lib/serf/null_object.rb",
-    "lib/serf/receivers/msgpack_receiver.rb",
-    "lib/serf/receivers/redis_pubsub_receiver.rb",
+    "lib/serf/handler.rb",
+    "lib/serf/message.rb",
+    "lib/serf/serfer.rb",
+    "lib/serf/util/null_object.rb",
     "lib/serf/version.rb",
     "serf.gemspec",
     "spec/serf_spec.rb",
     "spec/spec_helper.rb"
   ]
   s.homepage = "http://github.com/byu/serf"
-  s.licenses = ["MIT"]
+  s.licenses = ["Apache 2.0"]
   s.require_paths = ["lib"]
   s.rubygems_version = "1.8.10"
   s.summary = "Event-Driven SOA with CQRS"
@@ -52,54 +46,36 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
-      s.add_runtime_dependency(%q<activesupport>, ["~> 3.1.1"])
+      s.add_runtime_dependency(%q<activemodel>, ["~> 3.1.3"])
+      s.add_runtime_dependency(%q<activesupport>, ["~> 3.1.3"])
       s.add_runtime_dependency(%q<eventmachine>, ["~> 0.12.10"])
-      s.add_runtime_dependency(%q<i18n>, ["~> 0.6.0"])
-      s.add_runtime_dependency(%q<msgpack>, ["~> 0.4.6"])
-      s.add_runtime_dependency(%q<msgpack-rpc>, ["~> 0.4.5"])
-      s.add_runtime_dependency(%q<multi_json>, ["~> 1.0.3"])
-      s.add_runtime_dependency(%q<rack>, ["~> 1.3.5"])
-      s.add_runtime_dependency(%q<redis>, ["~> 2.2.2"])
       s.add_development_dependency(%q<rspec>, ["~> 2.3.0"])
       s.add_development_dependency(%q<yard>, ["~> 0.6.0"])
       s.add_development_dependency(%q<bundler>, ["~> 1.0.0"])
       s.add_development_dependency(%q<jeweler>, ["~> 1.6.4"])
       s.add_development_dependency(%q<rcov>, [">= 0"])
-      s.add_development_dependency(%q<log4r>, ["~> 1.1.9"])
-      s.add_development_dependency(%q<celluloid>, ["~> 0.5.0"])
+      s.add_development_dependency(%q<msgpack>, ["~> 0.4.6"])
     else
-      s.add_dependency(%q<activesupport>, ["~> 3.1.1"])
+      s.add_dependency(%q<activemodel>, ["~> 3.1.3"])
+      s.add_dependency(%q<activesupport>, ["~> 3.1.3"])
       s.add_dependency(%q<eventmachine>, ["~> 0.12.10"])
-      s.add_dependency(%q<i18n>, ["~> 0.6.0"])
-      s.add_dependency(%q<msgpack>, ["~> 0.4.6"])
-      s.add_dependency(%q<msgpack-rpc>, ["~> 0.4.5"])
-      s.add_dependency(%q<multi_json>, ["~> 1.0.3"])
-      s.add_dependency(%q<rack>, ["~> 1.3.5"])
-      s.add_dependency(%q<redis>, ["~> 2.2.2"])
       s.add_dependency(%q<rspec>, ["~> 2.3.0"])
       s.add_dependency(%q<yard>, ["~> 0.6.0"])
       s.add_dependency(%q<bundler>, ["~> 1.0.0"])
       s.add_dependency(%q<jeweler>, ["~> 1.6.4"])
       s.add_dependency(%q<rcov>, [">= 0"])
-      s.add_dependency(%q<log4r>, ["~> 1.1.9"])
-      s.add_dependency(%q<celluloid>, ["~> 0.5.0"])
+      s.add_dependency(%q<msgpack>, ["~> 0.4.6"])
     end
   else
-    s.add_dependency(%q<activesupport>, ["~> 3.1.1"])
+    s.add_dependency(%q<activemodel>, ["~> 3.1.3"])
+    s.add_dependency(%q<activesupport>, ["~> 3.1.3"])
     s.add_dependency(%q<eventmachine>, ["~> 0.12.10"])
-    s.add_dependency(%q<i18n>, ["~> 0.6.0"])
-    s.add_dependency(%q<msgpack>, ["~> 0.4.6"])
-    s.add_dependency(%q<msgpack-rpc>, ["~> 0.4.5"])
-    s.add_dependency(%q<multi_json>, ["~> 1.0.3"])
-    s.add_dependency(%q<rack>, ["~> 1.3.5"])
-    s.add_dependency(%q<redis>, ["~> 2.2.2"])
     s.add_dependency(%q<rspec>, ["~> 2.3.0"])
     s.add_dependency(%q<yard>, ["~> 0.6.0"])
     s.add_dependency(%q<bundler>, ["~> 1.0.0"])
     s.add_dependency(%q<jeweler>, ["~> 1.6.4"])
     s.add_dependency(%q<rcov>, [">= 0"])
-    s.add_dependency(%q<log4r>, ["~> 1.1.9"])
-    s.add_dependency(%q<celluloid>, ["~> 0.5.0"])
+    s.add_dependency(%q<msgpack>, ["~> 0.4.6"])
   end
 end
 
