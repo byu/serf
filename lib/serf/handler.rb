@@ -42,7 +42,7 @@ module Serf
         message_kind = env['kind']
         raise ArgumentError, 'No "kind" in call env' if message_kind.blank?
         method = self.class.serf_actions[message_kind]
-        raise ArgumentError, "#{message_kind} not found" if with.blank?
+        raise ArgumentError, "#{message_kind} not found" if method.blank?
         # Now execute the method with the environment parameters
         self.send method, env
       end
