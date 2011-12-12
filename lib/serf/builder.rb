@@ -1,22 +1,21 @@
-require 'rack'
+require 'serf/serfer'
 
 module Serf
 
   ##
-  # A Serf Builder that processes the SerfUp DSL to set up a new
-  # serf server processing.
+  # A Serf Builder that processes the SerfUp DSL to build a rack-like
+  # app to route and process received messages. This builder is
+  # implemented with lots of code from Rack::Builder.
   #
   #   builder = Serf::Builder.parse_file 'examples/config.su'
-  #   builder.run       # spins of daemon threads for each receiver
-  #   EventMachine::run # Most likely do this because of EmRunner middleware.
+  #   builder.to_app
   #
   # or
   #
   #   builder = Serf::Builder.new do
   #     ... A SerfUp Config block here. See the examples/config.su
   #   end
-  #   builder.run
-  #   EventMachine::run
+  #   builder.to_app
   #
   class Builder
     def self.parse_file(config)
@@ -26,71 +25,75 @@ module Serf
       return builder
     end
 
-    def initialize(&block)
-      @already_run = false
-      @groups = {}
-      @receivers = []
-
-      reset_current_group
+    def initialize(options={}, &block)
+      @use = []
+      @manifest = {}
+      @config = {}
+      @not_found = options[:not_found]
+      @serfer_class = options.fetch(:serfer_class) { ::Serf::Serfer }
+      @serfer_options = options[:serfer_options] || {}
       instance_eval(&block) if block_given?
     end
 
-    def group(name, &block)
-      raise 'Already inside group' if @current_group_name
-      @current_group_name = name
-      instance_eval(&block) if block_given?
-      commit_current_group
-      reset_current_group
+    def self.app(default_app=nil, &block)
+      self.new(default_app, &block).to_app
     end
 
     def use(middleware, *args, &block)
       @use << proc { |app| middleware.new(app, *args, &block) }
     end
 
-    def handle(kind, app=nil, &block)
-      raise 'Not inside group' unless @current_group_name
-      if app
-        @handlers[kind.to_s] = app
-      elsif block_given?
-        @handlers[kind.to_s] = ::Rack::Builder.new(block).to_app
-      end
+    def register(manifest)
+      @manifest.merge! manifest
+    end
+
+    def config(handler, *args, &block)
+      @config[handler] = [args, block]
     end
 
     def not_found(app)
-      raise 'not_found already declared for this group' if @not_found
       @not_found = app
     end
 
-    def bind(group, receiver, *args)
-      app = @groups[group]
-      @receivers << receiver.new(app, *args)
-    end
-
-    def run
-      raise 'Already run' if @already_run
-      @already_run = true
-      @receivers.each do |receiver|
-        Thread.new {
-          receiver.run
-        }
-      end
+    def to_app
+      app = generate_routes
+      return @use.reverse.inject(app) { |a,e| e[a] }
     end
 
     private
 
-    def reset_current_group
-      @current_group_name = nil
-      @not_found = nil
-      @handlers = {}
-      @use = []
-    end
+    def generate_routes
+      kinds = {}
+      handlers = {}
+      async_handlers = {}
 
-    def commit_current_group
-      app = ::Serf::Middleware::KindMapper.new(
-        map: @handlers,
-        not_found: @not_found)
-      app = @use.reverse.inject(app) { |a,e| e[a] } if @use.size > 0
-      @groups[@current_group_name] = app
+      @manifest.each do |kind, options|
+        # Instantiate our handler with any possible configuration.
+        handler_str = options.fetch(:handler)
+        handler_class = handler_str.camelize.constantize
+        args, block = @config.fetch(handler_str) { [[], nil] }
+        handler = handler_class.new *args, &block
+
+        # Then put it into the proper map of handlers for either
+        # synchronous or asynchronous processing.
+        async = options.fetch(:async) { true }
+        (async ? async_handlers : handlers)[kind] = handler
+
+        # Get the implementing message serialization class.
+        # For a given message kind, we may have a different (or nil)
+        # implementing class. If nil, then we're not going to try to
+        # create a message class to validate before passing to handler.
+        message_class = options.fetch(:message_class) { kind }
+        kinds[kind] = message_class && message_class.camelize.constantize
+      end
+
+      # We create the serfer class to handle all the messages.
+      return @serfer_class.new(
+        @serfer_options.merge(
+          kinds: kinds,
+          handlers: handlers,
+          async_handlers: async_handlers,
+          not_found: @not_found))
     end
 
   end
