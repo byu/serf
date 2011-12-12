@@ -1,9 +1,0 @@
-#!/usr/bin/env ruby
-
-#$LOAD_PATH << 'lib'
-
-require 'eventmachine'
-require 'serf'
-
-Serf::Builder.parse_file(ARGV.first).run
-EventMachine::run
