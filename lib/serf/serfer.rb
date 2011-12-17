@@ -24,18 +24,17 @@ module Serf
     # Rack-like call to handle a message
     #
     def call(env)
-      kind = env['kind']
+      params = env.symbolize_keys
+      kind = params[:kind]
 
       # Do a message_class validation if we have it listed.
       # And use the message attributes instead of raw env when passing
       # to message handler.
       message_class = @kinds[kind]
       if message_class
-        message = message_class.new env
+        message = message_class.new params
         raise message.errors.full_messages.join('. ') unless message.valid?
-        params = message.attributes
-      else
-        params = env.stringify_keys
+        params = message.attributes.symbolize_keys
       end
 
       # Run an asynchronous handler if we have it. 
