@@ -5,6 +5,7 @@ source 'http://rubygems.org'
 
 gem 'activemodel', '~> 3.1.3'
 gem 'activesupport', '~> 3.1.3'
+gem 'i18n', '~> 0.6.0' # For ActiveSupport
 gem 'eventmachine', '~> 0.12.10'
 
 # Add dependencies to develop your gem here.
