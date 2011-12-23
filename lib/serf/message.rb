@@ -40,6 +40,14 @@ module Serf
 
     end
 
+    module ClassMethods
+
+      def parse(*args)
+        self.new *args
+      end
+
+    end
+
   end
 
 end
