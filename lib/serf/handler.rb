@@ -4,6 +4,8 @@ require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/object/blank'
 require 'active_support/ordered_options'
 
+require 'serf/error'
+
 module Serf
 
   module Handler
@@ -37,14 +39,17 @@ module Serf
       #
       def call(env={})
         # Just to stringify the environment keys
-        env = env.dup.stringify_keys
+        env = env.symbolize_keys
         # Make sure a kind was set, and that we can handle it.
-        message_kind = env['kind']
+        message_kind = env[:kind]
         raise ArgumentError, 'No "kind" in call env' if message_kind.blank?
         method = self.class.serf_actions[message_kind]
         raise ArgumentError, "#{message_kind} not found" if method.blank?
         # Now execute the method with the environment parameters
         self.send method, env
+      rescue => e
+        e.extend ::Serf::Error
+        raise e
       end
     end
 

@@ -19,13 +19,14 @@ module Serf
     included do
       class_attribute :kind
       send 'kind=', self.to_s.tableize.singularize
+      self.include_root_in_json = false
     end
 
     module InstanceMethods
 
       def attributes
         {
-          'kind' => kind
+          :kind => kind
         }
       end
 
@@ -35,6 +36,14 @@ module Serf
 
       def to_msgpack
         attributes.to_msgpack
+      end
+
+    end
+
+    module ClassMethods
+
+      def parse(*args)
+        self.new *args
       end
 
     end
