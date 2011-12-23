@@ -4,6 +4,8 @@ require 'active_support/core_ext/hash/keys'
 require 'active_support/core_ext/object/blank'
 require 'active_support/ordered_options'
 
+require 'serf/error'
+
 module Serf
 
   module Handler
@@ -45,6 +47,9 @@ module Serf
         raise ArgumentError, "#{message_kind} not found" if method.blank?
         # Now execute the method with the environment parameters
         self.send method, env
+      rescue => e
+        e.extend ::Serf::Error
+        raise e
       end
     end
 
