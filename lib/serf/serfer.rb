@@ -1,77 +1,54 @@
-require 'eventmachine'
-
-require 'serf/util/null_object'
+require 'serf/error'
 
 module Serf
 
-  ##
-  # The Serfer is a rack app endpoint that:
   class Serfer
 
     def initialize(options={})
+      # Manditory, needs a runner.
+      @runner = options.fetch(:runner)
+
       # Options for handling the requests
       @kinds = options[:kinds] || {}
       @handlers = options[:handlers] || {}
-      @async_handlers = options[:async_handlers] || {}
-      @not_found = options[:not_found]
-
-      # Other processing aspects
-      @em = options.fetch(:event_machine) { ::EM }
-      @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
+      @not_found = options[:not_found] || proc do
+        raise ArgumentError, 'Handler Not Found'
+      end
     end
 
     ##
     # Rack-like call to handle a message
     #
     def call(env)
+      # We normalize by symbolizing the env keys
       params = env.symbolize_keys
+
+      # Pull the kind out of the env.
       kind = params[:kind]
-
-      # Do a message_class validation if we have it listed.
-      # And use the message attributes instead of raw env when passing
-      # to message handler.
-      message_class = @kinds[kind]
-      if message_class
-        message = message_class.new params
-        raise message.errors.full_messages.join('. ') unless message.valid?
-        params = message.attributes.symbolize_keys
-      end
-
-      # Run an asynchronous handler if we have it. 
-      handler = @async_handlers[kind]
-      if handler
-        @em.defer(proc do
-          begin
-            handler.call params
-          rescue => e
-            @logger.error e
-          end
-        end)
-        return [
-          202,
-          {
-            'Content-Type' => 'text/plain'
-          },
-          ['Accepted']
-        ]
-      end
-
-      # Run a synchronous handler if we have it. 
       handler = @handlers[kind]
-      return handler.call(params) if handler
+      if handler
+        # Do a message_class validation if we have it listed.
+        # And use the message attributes instead of raw env when passing
+        # to message handler.
+        message_class = @kinds[kind]
+        if message_class
+          message = message_class.parse params
+          unless message.valid?
+            raise ArgumentError, message.errors.full_messages.join('. ')
+          end
+          params = message.attributes.symbolize_keys
+        end
 
-      # run a not found
-      return @not_found.call(params) if @not_found
-
-      # we can't handle this kind.
-      return [
-        404,
-        {
-          'Content-Type' => 'text/plain',
-          'X-Cascade' => 'pass'
-        },
-        ['Not Found']
-      ]
+        # Let's run the handler
+        return @runner.run(handler, params) if handler
+      else
+        # we can't handle this kind.
+        return @not_found.call env
+      end
+    rescue => e
+      e.extend(::Serf::Error)
+      raise e
     end
   end
+
 end
