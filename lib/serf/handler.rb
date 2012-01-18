@@ -57,12 +57,17 @@ module Serf
 
       ##
       # registers a method to handle the receipt of a message type.
+      # @param *args splat list of message kinds
+      # @options opts [Symbol] :with The method to call.
       #
-      def receives(message_kind, options={})
-        raise ArgumentError, 'Blank message_kind' if message_kind.blank?
+      def receives(*args)
+        options = args.last.kind_of?(Hash) ? args.pop : {}
         exposed_method = options[:with]
         raise ArgumentError, 'Missing "with" option' if exposed_method.blank?
-        self.serf_actions[message_kind] = exposed_method
+        args.each do |kind|
+          raise ArgumentError, 'Blank kind' if kind.blank?
+          self.serf_actions[kind] = exposed_method
+        end
       end
 
     end
