@@ -98,9 +98,7 @@ module Serf
 
     def to_app
       # Our async and sync messages & handlers.
-      kinds = {}
       handlers = {}
-      async_kinds = {}
       async_handlers = {}
 
       # Iterate our manifests to build out handlers and message classes
@@ -111,21 +109,12 @@ module Serf
         args, block = @config.fetch(handler_str) { [[], nil] }
         handler = handler_class.new *args, &block
 
-        # Get the implementing message serialization class.
-        # For a given message kind, we may have a different (or nil)
-        # implementing class. If nil, then we're not going to try to
-        # create a message class to validate before passing to handler.
-        message_class = options.fetch(:message_class) { kind }
-        message_class = message_class && message_class.camelize.constantize
-
         # Put handlers and kinds into the proper map of handlers for either
         # synchronous or asynchronous processing.
         async = options.fetch(:async) { true }
         if async
-          async_kinds[kind] = message_class if message_class
           async_handlers[kind] = handler
         else
-          kinds[kind] = message_class if message_class
           handlers[kind] = handler
         end
       end
@@ -144,7 +133,6 @@ module Serf
         # create the serfer class to run synchronous handlers
         app = @serfer_class.new(
           @serfer_options.merge(
-            kinds: kinds,
             handlers: handlers,
             runner: runner,
             not_found: app))
@@ -159,7 +147,6 @@ module Serf
         # create the serfer class to run async handlers
         app = @serfer_class.new(
           @serfer_options.merge(
-            kinds: async_kinds,
             handlers: async_handlers,
             runner: async_runner,
             not_found: app))
