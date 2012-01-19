@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "serf"
-  s.version = "0.3.0"
+  s.version = "0.4.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Benjamin Yu"]
-  s.date = "2011-12-23"
+  s.date = "2012-01-19"
   s.description = "Event-Driven SOA with CQRS"
   s.email = "benjaminlyu@gmail.com"
   s.extra_rdoc_files = [
@@ -52,7 +52,6 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
-      s.add_runtime_dependency(%q<activemodel>, ["~> 3.1.3"])
       s.add_runtime_dependency(%q<activesupport>, ["~> 3.1.3"])
       s.add_runtime_dependency(%q<i18n>, ["~> 0.6.0"])
       s.add_runtime_dependency(%q<uuidtools>, ["~> 2.1.2"])
@@ -64,7 +63,6 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<msgpack>, ["~> 0.4.6"])
       s.add_development_dependency(%q<eventmachine>, ["~> 0.12.10"])
     else
-      s.add_dependency(%q<activemodel>, ["~> 3.1.3"])
       s.add_dependency(%q<activesupport>, ["~> 3.1.3"])
       s.add_dependency(%q<i18n>, ["~> 0.6.0"])
       s.add_dependency(%q<uuidtools>, ["~> 2.1.2"])
@@ -77,7 +75,6 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<eventmachine>, ["~> 0.12.10"])
     end
   else
-    s.add_dependency(%q<activemodel>, ["~> 3.1.3"])
     s.add_dependency(%q<activesupport>, ["~> 3.1.3"])
     s.add_dependency(%q<i18n>, ["~> 0.6.0"])
     s.add_dependency(%q<uuidtools>, ["~> 2.1.2"])

@@ -38,14 +38,15 @@ Serf App and Channels
 A Serf App is a Rack-like application that accepts an ENV hash as input.
 This ENV hash is simply the hash representation of a message to be processed.
 The Serf App, as configured by registered manifests, will:
-1. validate the message
-2. route the message to the proper handler
-3. run the handler in blocking or non-blocking mode.
-4. publish the handler's results to results or error channels.
+1. route the ENV to the proper handler
+2. run the handler in blocking or non-blocking mode.
+  a. The handler's serf call method will parse the ENV into a message object
+    if the handler registered a Message class.
+3. publish the handler's results to results or error channels.
   a. These channels are normally message queuing channels.
   b. We only require the channel instance to respond to the 'publish'
     method and accept a message (or message hash) as the argument.
-5. return the handler's results to the caller if it is blocking mode.
+4. return the handler's results to the caller if it is blocking mode.
   a. In non-blocking mode, an MessageAcceptedEvent is returned instead
     because the message will be run by the EventMachine deferred threadpool
     by default.
@@ -63,19 +64,56 @@ Service Libraries
   a. Barring that, they should conform to the idea that messages may be
     hashes that define at least one attribute: 'kind'.
 2. Serialization of the messages SHOULD BE Json or MessagePack (I hate XML).
+  a. `to_hash` is also included.
 3. Service Libraries SHOULD implement handler classes that include the
   ::Serf::Handler helper module.
-4. Handler methods MUST receive a message as an options hash, symbolized keys.
+4. Handler methods MUST receive a message as either as an options hash
+  (with symbolized keys) or an instance of a declared Message.
 5. Handler methods MUST return zero or more messages.
 6. Handler methods SHOULD handle catch their business logic exceptions and
   return them as specialized messages that can be forwarded down error channels.
   Uncaught exceptions that are then caught by Serf are published as
   generic Serf::CaughtExceptionEvents, and are harder to deal with.
 
+
+Serf::Message
+-------------
+
+Users of the Serf::Message module need to be aware of that:
+
+1. Messages MUST implement the `#attributes` method to use the
+  default implementations of `to_msgpack`, `to_json`, and `to_hash`.
+2. Messages MAY implement validation helpers (e.g. ActiveModel or
+  Virtus + Aequitas (DataMapper)). This is purely to be helpful for
+  receivers (Serf::Handlers) to validate the Messages before running
+  code against its data. The Serf infrastructure code does not
+  validate the Messages; it is the job of the handler code.
+3. Messages MAY override `Message.parse` class method if they want
+  different parsing (Message object instantiation) than
+  `message_class.new *args`. This parse method is called in
+  Serf::Handler when the handler class has defined a Message class
+  to be used to deserialize the ENV for a handler action method.
+3. Messages MAY override `Message#kind` instance method or `Message.kind`
+  class method to specify a message `kind` that is different than
+  the tableized name of the implementing ruby class.
+4. Messages MAY override `Message#to_msgpack`, `Message#to_json`, or
+  `Message#to_hash` to get alternate serialization.
+
+User that opt to roll their own Message class only need to be
+aware that:
+
+1. Message classes MUST implement `Message.parse(env={})` class method
+  if said message class is to be used as the target object representation
+  of a received message (from ENV hash).
+    a. Serf::Handler code makes this assumption when it finds an ENV
+    hash that is to be parsed into a message object.
+
+
 Example
 =======
 
     # Require our libraries
+    require 'active_model'
     require 'log4r'
     require 'serf/handler'
     require 'serf/message'
@@ -87,30 +125,10 @@ Example
       'fileOutputter',
       filename: 'log.txt')
 
-    # my_lib/my_handler.rb
-    class MyHandler
-      include Serf::Handler
-
-      receives(
-        'my_message',
-        with: :submit_my_message)
-
-      def initialize(options={})
-        @logger = options[:logger]
-      end
-
-      def submit_my_message(message={})
-        @logger.info "In Submit Match Result: #{message.inspect.to_s}"
-        # Do work Here...
-        # And return other messages as results of work, or nil for nothing.
-        return nil
-      end
-
-    end
-
     # my_lib/my_message.rb
     class MyMessage
       include Serf::Message
+      include ActiveModel::Validations
 
       attr_accessor :data
 
@@ -122,15 +140,58 @@ Example
 
     end
 
+    # my_lib/my_handler.rb
+    class MyHandler
+      include Serf::Handler
+
+      # Declare handlers for a 'my_message' message kind with a Message class.
+      receives(
+        'my_message',
+        as: MyMessage,
+        with: :submit_my_message)
+
+      # This handler of 'other_message' doesn't need a Message class,
+      # and will just work off the ENV hash.
+      receives(
+        'other_message',
+        with: :submit_other_message)
+
+      def initialize(options={})
+        @logger = options[:logger]
+      end
+
+      def submit_my_message(message)
+        @logger.info "In Submit My Message: #{message.inspect.to_s}"
+        # Validate message because we have implement my_message with it.
+        unless message.valid?
+          raise ArgumentError, message.errors.full_messages.join(',')
+        end
+        # Do work Here...
+        # And return other messages as results of work, or nil for nothing.
+        return nil
+      end
+
+      def submit_other_message(message={})
+        # The message here is the ENV hash because we didn't declare
+        # an :as option with `receives`.
+        @logger.info "In Submit Other Result: #{message.inspect.to_s}"
+        return nil
+      end
+
+    end
+
     # my_lib/manifest.rb
     MANIFEST = {
       'my_message' => {
-        # Optional Definition of an implementation class.
-        #message_class => 'other_name_space/my_other_message_implementation',
-        # Declares which handler
+        # Declares which handler to use. This is the tableized
+        # name of the class. It will be constantized by the serf code.
         handler: 'my_handler',
         # Default is true to process in background.
         async: true
+      },
+      'other_message' => {
+        handler: 'my_handler',
+        async: false
       }
     }
 
@@ -206,5 +267,5 @@ Contributing to serf
 Copyright
 =========
 
-Copyright (c) 2011 Benjamin Yu. See LICENSE.txt for further details.
+Copyright (c) 2011-2012 Benjamin Yu. See LICENSE.txt for further details.
 

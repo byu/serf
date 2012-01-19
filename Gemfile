@@ -4,7 +4,6 @@ source 'http://rubygems.org'
 #   gem 'activesupport', '>= 2.3.5'
 
 # Requirements for both clients and servers.
-gem 'activemodel', '~> 3.1.3'
 gem 'activesupport', '~> 3.1.3'
 gem 'i18n', '~> 0.6.0' # For ActiveSupport
 # Used by Serf::Messages::*

@@ -25,11 +25,11 @@ module Messages
       {
         'message' => @message,
         'uuid' => uuid
-      }.merge!(super)
+      }
     end
 
     def to_s
-      attributes.to_s
+      to_hash.to_s
     end
 
   end

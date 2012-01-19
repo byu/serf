@@ -33,11 +33,11 @@ module Messages
         'error_message' => @error_message,
         'error_backtrace' => @error_backtrace,
         'uuid' => uuid
-      }.merge!(super)
+      }
     end
 
     def to_s
-      attributes.to_s
+      to_hash.to_s
     end
 
   end
