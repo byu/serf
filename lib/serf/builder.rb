@@ -98,8 +98,8 @@ module Serf
 
     def to_app
       # Our async and sync messages & handlers.
-      handlers = {}
-      async_handlers = {}
+      handlers = Hash.new { |hash, key| hash[key] = [] }
+      async_handlers = Hash.new { |hash, key| hash[key] = [] }
 
       # Iterate our manifests to build out handlers and message classes
       @manifest.each do |kind, options|
@@ -113,9 +113,9 @@ module Serf
         # synchronous or asynchronous processing.
         async = options.fetch(:async) { true }
         if async
-          async_handlers[kind] = handler
+          async_handlers[kind] << handler
         else
-          handlers[kind] = handler
+          handlers[kind] << handler
         end
       end
 
@@ -135,7 +135,9 @@ module Serf
           @serfer_options.merge(
             handlers: handlers,
             runner: runner,
-            not_found: app))
+            not_found: app,
+            error_channel: @error_channel,
+            logger: @logger))
       end
 
       # If we have async handlers, insert before current app stack.
@@ -149,7 +151,9 @@ module Serf
           @serfer_options.merge(
             handlers: async_handlers,
             runner: async_runner,
-            not_found: app))
+            not_found: app,
+            error_channel: @error_channel,
+            logger: @logger))
       end
 
       return app
