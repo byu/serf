@@ -38,30 +38,27 @@ module Serf
 
     end
 
-    module InstanceMethods
-
-      ##
-      # Rack-like call. It receives an environment hash, which we
-      # assume is a message.
-      #
-      def call(env={})
-        # Just to stringify the environment keys
-        env = env.symbolize_keys
-        # Make sure a kind was set, and that we can handle it.
-        message_kind = env[:kind]
-        raise ArgumentError, 'No "kind" in call env' if message_kind.blank?
-        method = self.class.serf_actions[message_kind]
-        raise ArgumentError, "#{message_kind} not found" if method.blank?
-        # Optionally convert the env into a Message class.
-        # Let the actual handler method validate if they want.
-        message_class = self.class.serf_message_classes[message_kind]
-        env = message_class.parse env if message_class
-        # Now execute the method with the environment parameters
-        self.send method, env
-      rescue => e
-        e.extend ::Serf::Error
-        raise e
-      end
+    ##
+    # Rack-like call. It receives an environment hash, which we
+    # assume is a message.
+    #
+    def call(env={})
+      # Just to stringify the environment keys
+      env = env.symbolize_keys
+      # Make sure a kind was set, and that we can handle it.
+      message_kind = env[:kind]
+      raise ArgumentError, 'No "kind" in call env' if message_kind.blank?
+      method = self.class.serf_actions[message_kind]
+      raise ArgumentError, "#{message_kind} not found" if method.blank?
+      # Optionally convert the env into a Message class.
+      # Let the actual handler method validate if they want.
+      message_class = self.class.serf_message_classes[message_kind]
+      env = message_class.parse env if message_class
+      # Now execute the method with the environment parameters
+      self.send method, env
+    rescue => e
+      e.extend ::Serf::Error
+      raise e
     end
 
     module ClassMethods
