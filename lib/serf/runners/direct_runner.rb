@@ -21,12 +21,21 @@ module Runners
       @logger = options[:logger]
     end
 
-    def run(handler, params)
-      with_error_handling(params) do
-        results = handler.call params
-        publish_results results
-        return results
+    def run(endpoints, env)
+      results = []
+      endpoints.each do |ep|
+        run_results = with_error_handling(env) do
+          params = ep.message_parser ? ep.message_parser.parse(env) : env
+          ep.handler.send(ep.action, params)
+        end
+        results.concat Array(run_results)
+        publish_results run_results
       end
+      return results
+    end
+
+    def self.build(options={})
+      self.new options
     end
 
     protected
@@ -44,6 +53,7 @@ module Runners
       end
       return nil
     end
+
   end
 
 end

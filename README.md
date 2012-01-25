@@ -65,12 +65,10 @@ Service Libraries
     hashes that define at least one attribute: 'kind'.
 2. Serialization of the messages SHOULD BE Json or MessagePack (I hate XML).
   a. `to_hash` is also included.
-3. Service Libraries SHOULD implement handler classes that include the
-  ::Serf::Handler helper module.
-4. Handler methods MUST receive a message as either as an options hash
+3. Handler methods MUST receive a message as either as an options hash
   (with symbolized keys) or an instance of a declared Message.
-5. Handler methods MUST return zero or more messages.
-6. Handler methods SHOULD handle catch their business logic exceptions and
+4. Handler methods MUST return zero or more messages.
+5. Handler methods SHOULD handle catch their business logic exceptions and
   return them as specialized messages that can be forwarded down error channels.
   Uncaught exceptions that are then caught by Serf are published as
   generic Serf::CaughtExceptionEvents, and are harder to deal with.
@@ -105,7 +103,7 @@ aware that:
 1. Message classes MUST implement `Message.parse(env={})` class method
   if said message class is to be used as the target object representation
   of a received message (from ENV hash).
-    a. Serf::Handler code makes this assumption when it finds an ENV
+    a. Serf code makes this assumption when it finds an ENV
     hash that is to be parsed into a message object.
 
 
@@ -115,15 +113,34 @@ Example
     # Require our libraries
     require 'active_model'
     require 'log4r'
-    require 'serf/handler'
-    require 'serf/message'
+    require 'json'
+
     require 'serf/builder'
+    require 'serf/message'
 
     # create a simple logger for this example
-    logger = Log4r::Logger.new 'my_logger'
-    logger.outputters = Log4r::FileOutputter.new(
+    outputter = Log4r::FileOutputter.new(
       'fileOutputter',
       filename: 'log.txt')
+    ['top_level',
+      'serf',
+      'handler',
+      'results_channel',
+      'error_channel'].each do |name|
+      logger = Log4r::Logger.new name
+      logger.outputters = outputter
+    end
+
+    # Helper class for this example to receive result or error messages
+    # and pipe it into our logger.
+    class MyChannel
+      def initialize(logger)
+        @logger = logger
+      end
+      def publish(message)
+        @logger.info "#{message}"
+      end
+    end
 
     # my_lib/my_message.rb
     class MyMessage
@@ -135,92 +152,104 @@ Example
       validates_presence_of :data
 
       def initialize(options={})
-        @hi = options[:data] || 'some data here'
+        @data = options[:data]
+      end
+
+      # We define this for Serf::Message serialization.
+      def attributes
+        { 'data' => data }
       end
 
     end
 
     # my_lib/my_handler.rb
     class MyHandler
-      include Serf::Handler
-
-      # Declare handlers for a 'my_message' message kind with a Message class.
-      receives(
-        'my_message',
-        as: MyMessage,
-        with: :submit_my_message)
-
-      # This handler of 'other_message' doesn't need a Message class,
-      # and will just work off the ENV hash.
-      receives(
-        'other_message',
-        with: :submit_other_message)
 
       def initialize(options={})
         @logger = options[:logger]
       end
 
       def submit_my_message(message)
-        @logger.info "In Submit My Message: #{message.inspect.to_s}"
+        @logger.info "In Submit My Message: #{message.to_json}"
         # Validate message because we have implement my_message with it.
         unless message.valid?
           raise ArgumentError, message.errors.full_messages.join(',')
         end
         # Do work Here...
-        # And return other messages as results of work, or nil for nothing.
-        return nil
+        # And return 0 or more messages as result. Nil is valid response.
+        return { kind: 'my_message_results' }
       end
 
       def submit_other_message(message={})
         # The message here is the ENV hash because we didn't declare
         # an :as option with `receives`.
-        @logger.info "In Submit Other Result: #{message.inspect.to_s}"
-        return nil
+        @logger.info "In Submit OtherMessage: #{message.inspect.to_s}"
+        return [
+          { kind: 'other_message_result1' },
+          { kind: 'other_message_result2' }
+        ]
       end
 
+      def raises_error(message={})
+        @logger.info 'In Raises Error, about to raise error'
+        raise 'My Handler Runtime Error'
+      end
+
+      def regexp_matched(message={})
+        @logger.info "RegExp Matched #{message.inspect}"
+        nil
+      end
     end
 
-    # my_lib/manifest.rb
-    MANIFEST = {
-      'my_message' => {
+    # my_lib/routes.rb
+    ROUTES = {
+      # Declare a matcher and a list of routes to endpoints.
+      'my_message' => [{
         # Declares which handler to use. This is the tableized
         # name of the class. It will be constantized by the serf code.
         handler: 'my_handler',
-        # Default is true to process in background.
-        async: true
-      },
-      'other_message' => {
-        handler: 'my_handler',
-        async: false
-      }
-    }
+        action: :submit_my_message,
 
-    # Helper class for this example to receive result or error messages
-    # and pipe it into our logger.
-    class MyChannel
-      def initialize(name, logger)
-        @name = name
-        @logger = logger
-      end
-      def publish(message)
-        @logger.info "#{@name} #{message}"
-        #@logger.info message
-      end
-    end
+        # Define a parser that will build up a message object.
+        # Default: nil, no parsing done.
+        # Or name of registered parser to use.
+        message_parser: 'my_parser',
+
+        # Default is process in foreground.
+        #background: false
+      }],
+      'other_message' => [{
+        handler: 'my_handler',
+        action: :submit_other_message,
+        background: true
+      }, {
+        handler: 'my_handler',
+        action: :raises_error,
+        background: true
+      }],
+      /^events\/.*$/ => [{
+        handler: 'my_handler',
+        action: :regexp_matched,
+        background: true
+      }]
+    }
 
     # Create a new builder for this serf app.
     builder = Serf::Builder.new do
-      # Registers different service libary manifests.
-      register MANIFEST
+      # Registers routes from different service libary manifests.
+      routes ROUTES
+
       # Can define arguments to pass to the 'my_handler' initialize method.
-      config(
-        'my_handler',
-        logger: logger)
+      handler 'my_handler', MyHandler.new(logger: ::Log4r::Logger['handler'])
+      message_parser 'my_parser', MyMessage
+
       # Create result and error channels for the handler result messages.
-      error_channel MyChannel.new('errorchannel: ', logger)
-      results_channel MyChannel.new('resultschannel: ', logger)
+      error_channel MyChannel.new(::Log4r::Logger['error_channel'])
+      results_channel MyChannel.new(::Log4r::Logger['results_channel'])
+
       # We pass in a logger to our Serf code: Serfer and Runners.
-      logger logger
+      logger ::Log4r::Logger['serf']
+
       # Optionally define a not found handler...
       # Defaults to raising an ArgumentError, 'Not Found'.
       #not_found lambda {|x| puts x}
@@ -228,21 +257,39 @@ Example
     app = builder.to_app
 
     # Start event machine loop.
+    logger = ::Log4r::Logger['top_level']
     EM.run do
       # On the next tick
       EM.next_tick do
         logger.info "Start Tick #{Thread.current.object_id}"
+
         # This will submit a 'my_message' message (as a hash) to the Serf App.
+        # NOTE: We should get an error message pushed to the error channel
+        #  because no 'data' field was put in my_message as required
+        #  And the Result should have a CaughtExceptionEvent.
         results = app.call('kind' => 'my_message')
-        # Because we declared the 'my_message' kind to be handled async, we
+        logger.info "In Tick, MyMessage Results: #{results.inspect}"
+
+        # Here is good result
+        results = app.call('kind' => 'my_message', 'data' => '1234')
+        logger.info "In Tick, MyMessage Results: #{results.inspect}"
+
+        # This will submit 'other_message' to be handled in foreground
+        # Because we declared the 'other_message' kind to be handled async, we
         # should get a MessageAcceptedEvent as the results.
-        logger.info "In Tick Results: #{results.inspect}"
+        results = app.call('kind' => 'other_message')
+        logger.info "In Tick, OtherMessage Results: #{results.inspect}"
+
+        # This will match a regexp
+        results = app.call('kind' => 'events/my_event')
+        logger.info "In Tick, Regexp Results: #{results.inspect}"
+
         begin
           # Here, we're going to submit a message that we don't handle.
           # By default, an exception will be raised.
           app.call('kind' => 'unhandled_message_kind')
         rescue => e
-          puts "Caught in Tick: #{e.inspect}"
+          logger.warn "Caught in Tick: #{e.inspect}"
         end
         logger.info "End Tick #{Thread.current.object_id}"
       end
@@ -250,7 +297,6 @@ Example
         EM.stop
       end
     end
-
 
 Contributing to serf
 ====================
