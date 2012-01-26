@@ -117,6 +117,7 @@ Example
 
     require 'serf/builder'
     require 'serf/message'
+    require 'serf/middleware/uuid_tagger'
 
     # create a simple logger for this example
     outputter = Log4r::FileOutputter.new(
@@ -236,6 +237,9 @@ Example
 
     # Create a new builder for this serf app.
     builder = Serf::Builder.new do
+      # Include some middleware
+      use Serf::Middleware::UuidTagger
+
       # Registers routes from different service libary manifests.
       routes ROUTES
 
