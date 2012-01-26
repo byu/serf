@@ -35,7 +35,9 @@ module Serf
       @route_maps = []
       @handlers = {}
       @message_parsers = {}
-      @not_found = app
+      @not_found = app || proc do
+        raise ArgumentError, 'Handler Not Found'
+      end
 
       # Factories to build objects that wire our Serf App together.
       # Note that these default implementing classes are also factories
