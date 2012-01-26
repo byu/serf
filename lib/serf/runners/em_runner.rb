@@ -1,6 +1,7 @@
 require 'eventmachine'
 
 require 'serf/messages/message_accepted_event'
+require 'serf/runners/direct_runner'
 
 module Serf
 module Runners
@@ -34,15 +35,25 @@ module Runners
       @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
     end
 
-    def run(handler, params)
+    def run(endpoints, env)
+      endpoints = endpoints.dup
+      env = env.dup
       @evm.defer(proc do
         begin
-          @runner.run handler, params
+          @runner.run endpoints, env
         rescue => e
           @logger.error "#{e.inspect}\n\n#{e.backtrace.join("\n")}"
         end
       end)
-      return @mae_class.new message: params
+      return @mae_class.new message: env
+    end
+
+    def self.build(options={})
+      options[:runner] = options.fetch(:runner) {
+        factory = options[:runner_factory] || ::Serf::Runners::DirectRunner
+        factory.build options
+      }
+      self.new options
     end
 
   end

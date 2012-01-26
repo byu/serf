@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "serf"
-  s.version = "0.4.1"
+  s.version = "0.5.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Benjamin Yu"]
-  s.date = "2012-01-22"
+  s.date = "2012-01-26"
   s.description = "Event-Driven SOA with CQRS"
   s.email = "benjaminlyu@gmail.com"
   s.extra_rdoc_files = [
@@ -28,15 +28,19 @@ Gem::Specification.new do |s|
     "lib/serf.rb",
     "lib/serf/builder.rb",
     "lib/serf/error.rb",
-    "lib/serf/handler.rb",
     "lib/serf/message.rb",
     "lib/serf/messages/caught_exception_event.rb",
     "lib/serf/messages/message_accepted_event.rb",
+    "lib/serf/middleware/uuid_tagger.rb",
     "lib/serf/runners/direct_runner.rb",
     "lib/serf/runners/em_runner.rb",
     "lib/serf/serfer.rb",
     "lib/serf/util/null_object.rb",
+    "lib/serf/util/regexp_matcher.rb",
+    "lib/serf/util/route_endpoint.rb",
+    "lib/serf/util/route_set.rb",
     "lib/serf/util/uuidable.rb",
+    "lib/serf/util/with_error_handling.rb",
     "lib/serf/version.rb",
     "serf.gemspec",
     "spec/serf_spec.rb",

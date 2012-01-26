@@ -17,24 +17,20 @@ module Serf
       send 'kind=', self.to_s.tableize.singularize
     end
 
-    module InstanceMethods
+    def kind
+      self.class.kind
+    end
 
-      def kind
-        self.class.kind
-      end
+    def to_hash
+      attributes.merge kind: kind
+    end
 
-      def to_hash
-        attributes.merge kind: kind
-      end
+    def to_msgpack
+      to_hash.to_msgpack
+    end
 
-      def to_msgpack
-        to_hash.to_msgpack
-      end
-
-      def to_json(*args)
-        to_hash.to_json *args
-      end
-
+    def to_json(*args)
+      to_hash.to_json *args
     end
 
     module ClassMethods

@@ -1,5 +1,4 @@
-require 'serf/messages/caught_exception_event'
-require 'serf/util/null_object'
+require 'serf/util/with_error_handling'
 
 module Serf
 module Runners
@@ -10,28 +9,33 @@ module Runners
   # to proper error or results channels.
   #
   class DirectRunner
+    include ::Serf::Util::WithErrorHandling
 
     def initialize(options={})
       # Mandatory, we want both results and error channels.
       @results_channel = options.fetch(:results_channel)
       @error_channel = options.fetch(:error_channel)
 
-      # For caught exceptions, we're going to publish an error event
-      # over our error channel. This defines our error event message class.
-      @error_event_class = options.fetch(:error_event_class) {
-        ::Serf::Messages::CaughtExceptionEvent
-      }
-
-      # Our default logger
-      @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
+      # Optional overrides for error handling
+      @error_event_class = options[:error_event_class]
+      @logger = options[:logger]
     end
 
-    def run(handler, params)
-      with_error_handling(params) do
-        results = handler.call params
-        publish_results results
-        return results
+    def run(endpoints, env)
+      results = []
+      endpoints.each do |ep|
+        run_results = with_error_handling(env) do
+          params = ep.message_parser ? ep.message_parser.parse(env) : env
+          ep.handler.send(ep.action, params)
+        end
+        results.concat Array(run_results)
+        publish_results run_results
       end
+      return results
+    end
+
+    def self.build(options={})
+      self.new options
     end
 
     protected
@@ -50,24 +54,6 @@ module Runners
       return nil
     end
 
-    ##
-    # A block wrapper to handle errors when executing a block.
-    #
-    def with_error_handling(context=nil)
-      yield
-    rescue => e
-      error_event = @error_event_class.new(
-        context: context,
-        error_message: e.inspect,
-        error_backtrace: e.backtrace.join("\n"))
-
-      # log the error to our logger, and to our error channel.
-      @logger.error error_event
-      @error_channel.publish error_event
-
-      # We're done, so just return this error.
-      return error_event
-    end
   end
 
 end

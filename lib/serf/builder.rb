@@ -2,13 +2,14 @@ require 'serf/serfer'
 require 'serf/runners/direct_runner'
 require 'serf/runners/em_runner'
 require 'serf/util/null_object'
+require 'serf/util/route_set'
 
 module Serf
 
   ##
   # A Serf Builder that processes the SerfUp DSL to build a rack-like
   # app to route and process received messages. This builder is
-  # implemented with lots of code from Rack::Builder.
+  # implemented based on code from Rack::Builder.
   #
   #   builder = Serf::Builder.parse_file 'examples/config.su'
   #   builder.to_app
@@ -16,7 +17,7 @@ module Serf
   # or
   #
   #   builder = Serf::Builder.new do
-  #     ... A SerfUp Config block here. See the examples/config.su
+  #     ... A SerfUp Config block here.
   #   end
   #   builder.to_app
   #
@@ -30,17 +31,19 @@ module Serf
 
     def initialize(app=nil, &block)
       # Configuration about the routes and apps to run.
-      @manifest = {}
-      @config = {}
+      @use = []
+      @route_maps = []
+      @handlers = {}
+      @message_parsers = {}
       @not_found = app
 
-      # Implementing classes of our app
-      # NOTE: runner_class and async_runner_class are only used if actual
-      #   runner instances are omitted in the configuration.
-      @serfer_class = ::Serf::Serfer
-      @serfer_options = {}
-      @runner_class = ::Serf::Runners::DirectRunner
-      @async_runner_class = ::Serf::Runners::EmRunner
+      # Factories to build objects that wire our Serf App together.
+      # Note that these default implementing classes are also factories
+      # of their own objects (i.e. - define a 'build' class method).
+      @serfer_factory = ::Serf::Serfer
+      @foreground_runner_factory = ::Serf::Runners::DirectRunner
+      @background_runner_factory = ::Serf::Runners::EmRunner
+      @route_set_factory = ::Serf::Util::RouteSet
 
       # Utility and messaging channels for our Runners
       # NOTE: these are only used if the builder needs to instantiage runners.
@@ -56,32 +59,40 @@ module Serf
       self.new(default_app, &block).to_app
     end
 
-    def register(manifest)
-      @manifest.merge! manifest
+    def use(middleware, *args, &block)
+      @use << proc { |app| middleware.new(app, *args, &block) }
     end
 
-    def config(handler, *args, &block)
-      @config[handler] = [args, block]
+    def routes(route_map)
+      @route_maps << route_map
+    end
+
+    def handler(handler_name, handler)
+      @handlers[handler_name] = handler
+    end
+
+    def message_parser(message_parser_name, message_parser)
+      @message_parsers[message_parser_name] = message_parser
     end
 
     def not_found(app)
       @not_found = app
     end
 
-    def serfer_class(serfer_class)
-      @serfer_class = serfer_class
+    def serfer_factory(serfer_factory)
+      @serfer_factory = serfer_factory
     end
 
-    def serfer_class(serfer_options)
-      @serfer_options = serfer_options
+    def foreground_runner_factory(foreground_runner_factory)
+      @foreground_runner_factory = foreground_runner_factory
     end
 
-    def runner(runner)
-      @runner = runner
+    def background_runner_factory(background_runner_factory)
+      @background_runner_factory = background_runner_factory
     end
 
-    def async_runner(runner)
-      @async_runner = runner
+    def route_set_factory(route_set_factory)
+      @route_set_factory = route_set_factory
     end
 
     def results_channel(results_channel)
@@ -97,60 +108,78 @@ module Serf
     end
 
     def to_app
-      # Our async and sync messages & handlers.
-      handlers = {}
-      async_handlers = {}
+      bg_route_set = @route_set_factory.build
+      fg_route_set = @route_set_factory.build
 
-      # Iterate our manifests to build out handlers and message classes
-      @manifest.each do |kind, options|
-        # Instantiate our handler with any possible configuration.
-        handler_str = options.fetch(:handler)
-        handler_class = handler_str.camelize.constantize
-        args, block = @config.fetch(handler_str) { [[], nil] }
-        handler = handler_class.new *args, &block
+      @route_maps.each do |route_map|
+        route_map.each do |matcher, route_configs|
+          route_configs.each do |route_config|
+            # Get the required handler.
+            # Raises error if handler wasn't declared in config.
+            # Raises error if handler wasn't registered with builder.
+            handler_name = route_config.fetch :handler
+            handler = @handlers.fetch handler_name
 
-        # Put handlers and kinds into the proper map of handlers for either
-        # synchronous or asynchronous processing.
-        async = options.fetch(:async) { true }
-        if async
-          async_handlers[kind] = handler
-        else
-          handlers[kind] = handler
+            # Get the required action/method of the handler.
+            # Raises error if route_config doesn't have it.
+            action = route_config.fetch :action
+
+            # Lookup the parser if it was defined.
+            # The Parser MAY be either an object or string.
+            # If String, then we're going to look up in parser map.
+            # Raises an error if a parser (string) was declared, but not
+            # registered with the builder.
+            parser = route_config[:message_parser]
+            parser = @message_parsers.fetch(parser) if parser.is_a?(String)
+
+            # We have the handler, action and parser.
+            # Now we're going to add that route to either the background
+            # or foreground route_set.
+            background = route_config.fetch(:background) { false }
+            (background ? bg_route_set : fg_route_set).add_route(
+              matcher: matcher,
+              handler: handler,
+              action: action,
+              message_parser: parser)
+          end
         end
       end
 
-      # Get or make our runner
-      runner = @runner || @runner_class.new(
+      # Get or make our foreground runner
+      fg_runner = @foreground_runner_factory.build(
         results_channel: @results_channel,
         error_channel: @error_channel,
         logger: @logger)
 
+      # Get or make our background runner
+      bg_runner = @background_runner_factory.build(
+        results_channel: @results_channel,
+        error_channel: @error_channel,
+        logger: @logger)
+
+      # We create the route_sets dependent on built routes.
+      route_sets = {}
+      if fg_route_set.size > 0
+        route_sets[fg_route_set] = fg_runner
+      end
+      if bg_route_set.size > 0
+        route_sets[bg_route_set] = bg_runner
+      end
+
       # By default, we go to the not_found app.
       app = @not_found
 
-      # If we have synchronous handlers, insert before not_found app.
-      if handlers.size > 0
-        # create the serfer class to run synchronous handlers
-        app = @serfer_class.new(
-          @serfer_options.merge(
-            handlers: handlers,
-            runner: runner,
-            not_found: app))
+      # But if we have routes, then we'll build a serfer to handle it.
+      if route_sets.size > 0
+        app = @serfer_factory.build(
+          route_sets: route_sets,
+          not_found: app,
+          error_channel: @error_channel,
+          logger: @logger)
       end
 
-      # If we have async handlers, insert before current app stack.
-      if async_handlers.size > 0
-        # Get or make our async wrapper
-        async_runner = @async_runner || @async_runner_class.new(
-          runner: runner,
-          logger: @logger)
-        # create the serfer class to run async handlers
-        app = @serfer_class.new(
-          @serfer_options.merge(
-            handlers: async_handlers,
-            runner: async_runner,
-            not_found: app))
-      end
+      # We're going to inject middleware here.
+      app = @use.reverse.inject(app) { |a,e| e[a] } if @use.size > 0
 
       return app
     end
