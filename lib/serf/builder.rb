@@ -31,6 +31,7 @@ module Serf
 
     def initialize(app=nil, &block)
       # Configuration about the routes and apps to run.
+      @use = []
       @route_maps = []
       @handlers = {}
       @message_parsers = {}
@@ -56,6 +57,10 @@ module Serf
 
     def self.app(default_app=nil, &block)
       self.new(default_app, &block).to_app
+    end
+
+    def use(middleware, *args, &block)
+      @use << proc { |app| middleware.new(app, *args, &block) }
     end
 
     def routes(route_map)
@@ -172,6 +177,9 @@ module Serf
           error_channel: @error_channel,
           logger: @logger)
       end
+
+      # We're going to inject middleware here.
+      app = @use.reverse.inject(app) { |a,e| e[a] } if @use.size > 0
 
       return app
     end
