@@ -39,6 +39,9 @@ module Serf
         raise ArgumentError, 'Handler Not Found'
       end
 
+      # Default option in route_configs for background is 'false'
+      @background = false
+
       # Factories to build objects that wire our Serf App together.
       # Note that these default implementing classes are also factories
       # of their own objects (i.e. - define a 'build' class method).
@@ -79,6 +82,10 @@ module Serf
 
     def not_found(app)
       @not_found = app
+    end
+
+    def background(run_in_background)
+      @background = run_in_background
     end
 
     def serfer_factory(serfer_factory)
@@ -142,7 +149,7 @@ module Serf
             # We have the handler, action and parser.
             # Now we're going to add that route to either the background
             # or foreground route_set.
-            background = config.fetch(:background) { false }
+            background = config.fetch(:background) { @background }
             (background ? bg_route_set : fg_route_set).add_route(
               matcher: matcher,
               handler: handler,
