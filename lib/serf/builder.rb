@@ -122,7 +122,7 @@ module Serf
 
       @route_maps.each do |route_map|
         route_map.each do |matcher, route_configs|
-          route_configs.each do |route_config|
+          route_configs_iterator(route_configs).each do |route_config|
             # If the passed in route_config was a String, then we place
             # it in an route config as the 'target' field and leave all
             # other options as default.
@@ -199,6 +199,20 @@ module Serf
     end
 
     private
+
+    ##
+    # This handles route_configs that are Array, Hash or String.
+    # We want to create a proper iterator to run over the route_configs.
+    def route_configs_iterator(route_configs)
+      case route_configs
+      when String
+        return Array(route_configs)
+      when Hash
+        return [route_configs]
+      else
+        return route_configs
+      end
+    end
 
     ##
     # Extracts the handler_name and action from the 'target' using

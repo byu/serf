@@ -210,7 +210,8 @@ Example
     # my_lib/routes.rb
     ROUTES = {
       # Declare a matcher and a list of routes to endpoints.
-      'my_message' => [{
+      # We can declare a single route.
+      'my_message' => {
         # Declares which handler and action (method) of the handler
         # to call. The handler part is the name of the handler used
         # to register an actual handler object.
@@ -223,7 +224,8 @@ Example
 
         # Default is process in foreground.
         #background: false
-      }],
+      },
+      # This message kind is handled by multiple handlers.
       'other_message' => [{
         target: 'my_handler#submit_other_message',
         background: true
@@ -236,10 +238,7 @@ Example
         # part defaults to the 'call' method of the handler.
         'my_handler'
       ],
-      /^events\/.*$/ => [{
-        target: 'my_handler#regexp_matched',
-        background: true
-      }]
+      /^events\/.*$/ => 'my_handler#regexp_matched'
     }
 
     # Create a new builder for this serf app.
