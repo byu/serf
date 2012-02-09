@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "serf"
-  s.version = "0.5.0"
+  s.version = "0.6.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Benjamin Yu"]
-  s.date = "2012-01-26"
+  s.date = "2012-02-09"
   s.description = "Event-Driven SOA with CQRS"
   s.email = "benjaminlyu@gmail.com"
   s.extra_rdoc_files = [
@@ -49,7 +49,7 @@ Gem::Specification.new do |s|
   s.homepage = "http://github.com/byu/serf"
   s.licenses = ["Apache 2.0"]
   s.require_paths = ["lib"]
-  s.rubygems_version = "1.8.10"
+  s.rubygems_version = "1.8.15"
   s.summary = "Event-Driven SOA with CQRS"
 
   if s.respond_to? :specification_version then
