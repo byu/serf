@@ -200,16 +200,21 @@ Example
         @logger.info "RegExp Matched #{message.inspect}"
         nil
       end
+
+      def call(message={})
+        @logger.info "A message matched an empty action part in the target"
+        nil
+      end
     end
 
     # my_lib/routes.rb
     ROUTES = {
       # Declare a matcher and a list of routes to endpoints.
       'my_message' => [{
-        # Declares which handler to use. This is the tableized
-        # name of the class. It will be constantized by the serf code.
-        handler: 'my_handler',
-        action: :submit_my_message,
+        # Declares which handler and action (method) of the handler
+        # to call. The handler part is the name of the handler used
+        # to register an actual handler object.
+        target: 'my_handler#submit_my_message',
 
         # Define a parser that will build up a message object.
         # Default: nil, no parsing done.
@@ -220,17 +225,19 @@ Example
         #background: false
       }],
       'other_message' => [{
-        handler: 'my_handler',
-        action: :submit_other_message,
+        target: 'my_handler#submit_other_message',
         background: true
       }, {
-        handler: 'my_handler',
-        action: :raises_error,
+        target: 'my_handler#raises_error',
         background: true
-      }],
+      },
+        # This is just a string route defining the target, nothing else.
+        # The handler is 'my_handler' and an empty (or missing) action
+        # part defaults to the 'call' method of the handler.
+        'my_handler'
+      ],
       /^events\/.*$/ => [{
-        handler: 'my_handler',
-        action: :regexp_matched,
+        target: 'my_handler#regexp_matched',
         background: true
       }]
     }
@@ -279,8 +286,9 @@ Example
         logger.info "In Tick, MyMessage Results: #{results.inspect}"
 
         # This will submit 'other_message' to be handled in foreground
-        # Because we declared the 'other_message' kind to be handled async, we
-        # should get a MessageAcceptedEvent as the results.
+        # Because we declared the 'other_message' kind to be handled async
+        # in each route config, we should get a MessageAcceptedEvent as
+        # the results.
         results = app.call('kind' => 'other_message')
         logger.info "In Tick, OtherMessage Results: #{results.inspect}"
 

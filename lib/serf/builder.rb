@@ -35,7 +35,12 @@ module Serf
       @route_maps = []
       @handlers = {}
       @message_parsers = {}
-      @not_found = app
+      @not_found = app || proc do
+        raise ArgumentError, 'Handler Not Found'
+      end
+
+      # Default option in route_configs for background is 'false'
+      @background = false
 
       # Factories to build objects that wire our Serf App together.
       # Note that these default implementing classes are also factories
@@ -79,6 +84,10 @@ module Serf
       @not_found = app
     end
 
+    def background(run_in_background)
+      @background = run_in_background
+    end
+
     def serfer_factory(serfer_factory)
       @serfer_factory = serfer_factory
     end
@@ -114,28 +123,33 @@ module Serf
       @route_maps.each do |route_map|
         route_map.each do |matcher, route_configs|
           route_configs.each do |route_config|
+            # If the passed in route_config was a String, then we place
+            # it in an route config as the 'target' field and leave all
+            # other options as default.
+            config = (route_config.is_a?(String) ?
+              { target: route_config } :
+              route_config)
+
             # Get the required handler.
             # Raises error if handler wasn't declared in config.
-            # Raises error if handler wasn't registered with builder.
-            handler_name = route_config.fetch :handler
-            handler = @handlers.fetch handler_name
+            target = config.fetch :target
+            handler_name, action = handler_and_action target
 
-            # Get the required action/method of the handler.
-            # Raises error if route_config doesn't have it.
-            action = route_config.fetch :action
+            # Raises error if handler wasn't registered with builder.
+            handler = @handlers.fetch handler_name
 
             # Lookup the parser if it was defined.
             # The Parser MAY be either an object or string.
             # If String, then we're going to look up in parser map.
             # Raises an error if a parser (string) was declared, but not
             # registered with the builder.
-            parser = route_config[:message_parser]
+            parser = config[:message_parser]
             parser = @message_parsers.fetch(parser) if parser.is_a?(String)
 
             # We have the handler, action and parser.
             # Now we're going to add that route to either the background
             # or foreground route_set.
-            background = route_config.fetch(:background) { false }
+            background = config.fetch(:background) { @background }
             (background ? bg_route_set : fg_route_set).add_route(
               matcher: matcher,
               handler: handler,
@@ -182,6 +196,28 @@ module Serf
       app = @use.reverse.inject(app) { |a,e| e[a] } if @use.size > 0
 
       return app
+    end
+
+    private
+
+    ##
+    # Extracts the handler_name and action from the 'target' using
+    # the shortcut convention similar to Rails routing.
+    #
+    #   'my_handler#my_method' => # my_method action.
+    #   'my_handler#' => # action defaults to 'call' method.
+    #   'my_handler'  => # action defaults to 'call' method.
+    #   '#my_method'  => # some registered handler name with empty string.
+    #
+    # @param [String] target the handler and action description.
+    # @return the splat handler and action.
+    #
+    def handler_and_action(target)
+      handler, action = target.split '#', 2
+      handler = handler.to_s.strip
+      action = action.to_s.strip
+      action = :call if action.size == 0
+      return handler, action
     end
   end
 
