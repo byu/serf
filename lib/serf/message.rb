@@ -15,6 +15,8 @@ module Serf
     included do
       class_attribute :kind
       send 'kind=', self.to_s.tableize.singularize
+      class_attribute :model_name
+      send 'model_name=', self.to_s
     end
 
     def kind
@@ -31,6 +33,10 @@ module Serf
 
     def to_json(*args)
       to_hash.to_json *args
+    end
+
+    def model
+      self.class
     end
 
     module ClassMethods
