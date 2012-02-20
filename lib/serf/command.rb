@@ -15,10 +15,12 @@ module Serf
   #   end
   #
   class Command
+    attr_reader :request
+    attr_reader :options
 
     def initialize(request, *args)
       @args = args
-      @opts = @args.last.is_a?(::Hash) ? pop : {}
+      @options = @args.last.is_a?(::Hash) ? pop : {}
 
       @request = request.is_a?(Hash) ? request_parser.parse(request) : request
 
@@ -37,6 +39,14 @@ module Serf
     end
 
     protected
+
+    def opts(key, default=nil)
+      if default.nil?
+        return @options.fetch key
+      else
+        return @options.fetch(key) { default }
+      end
+    end
 
     def request_parser
       raise ArgumentError, 'Parsing Hash request is Not Supported'
