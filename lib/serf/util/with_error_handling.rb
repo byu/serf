@@ -1,3 +1,5 @@
+require 'active_support/core_ext/string/inflections'
+
 require 'serf/messages/caught_exception_event'
 require 'serf/util/null_object'
 
@@ -27,7 +29,7 @@ module Util
       error_channel = @error_channel || ::Serf::Util::NullObject.new
       error_event = eec.new(
         context: context,
-        error: e.class.to_s,
+        error: e.class.to_s.tableize,
         message: e.message,
         backtrace: e.backtrace.join("\n"))
 
