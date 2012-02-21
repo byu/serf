@@ -27,8 +27,9 @@ module Util
       error_channel = @error_channel || ::Serf::Util::NullObject.new
       error_event = eec.new(
         context: context,
-        error_message: e.inspect,
-        error_backtrace: e.backtrace.join("\n"))
+        error: e.class.to_s,
+        message: e.message,
+        backtrace: e.backtrace.join("\n"))
 
       # log the error to our logger, and to our error channel.
       logger.error error_event

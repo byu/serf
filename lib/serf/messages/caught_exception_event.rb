@@ -17,21 +17,24 @@ module Messages
     include ::Serf::Util::Uuidable
 
     attr_accessor :context
-    attr_accessor :error_message
-    attr_accessor :error_backtrace
+    attr_accessor :error
+    attr_accessor :message
+    attr_accessor :backtrace
 
     def initialize(options={})
       @context = options[:context]
-      @error_message = options[:error_message]
-      @error_backtrace = options[:error_backtrace]
+      @error = options[:error]
+      @message = options[:message]
+      @backtrace = options[:backtrace]
       @uuid = options[:uuid]
     end
 
     def attributes
       {
         'context' => @context,
-        'error_message' => @error_message,
-        'error_backtrace' => @error_backtrace,
+        'error' => @error,
+        'message' => @message,
+        'backtrace' => @backtrace,
         'uuid' => uuid
       }
     end
