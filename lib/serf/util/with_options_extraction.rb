@@ -29,7 +29,7 @@ module Util
     # Reader method for the options hash.
     #
     def options
-      return @options
+      return @options || {}
     end
 
     protected
@@ -39,9 +39,9 @@ module Util
     #
     def opts(key, default=nil)
       if default.nil?
-        return @options.fetch key
+        return options.fetch key
       else
-        return @options.fetch(key) { default }
+        return options.fetch(key) { default }
       end
     end
 
