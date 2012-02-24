@@ -1,3 +1,5 @@
+require 'serf/util/with_options_extraction'
+
 module Serf
 
   ##
@@ -15,12 +17,13 @@ module Serf
   #   end
   #
   class Command
+    include Serf::Util::WithOptionsExtraction
+
     attr_reader :request
-    attr_reader :options
 
     def initialize(request, *args)
+      extract_options! args
       @args = args
-      @options = @args.last.is_a?(::Hash) ? @args.pop : {}
 
       @request = request.is_a?(Hash) ? request_parser.parse(request) : request
 
@@ -39,14 +42,6 @@ module Serf
     end
 
     protected
-
-    def opts(key, default=nil)
-      if default.nil?
-        return @options.fetch key
-      else
-        return @options.fetch(key) { default }
-      end
-    end
 
     def request_parser
       raise ArgumentError, 'Parsing Hash request is Not Supported'
