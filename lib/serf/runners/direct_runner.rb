@@ -11,14 +11,11 @@ module Runners
   class DirectRunner
     include ::Serf::Util::WithErrorHandling
 
-    def initialize(options={})
-      # Mandatory, we want both results and error channels.
-      @results_channel = options.fetch(:results_channel)
-      @error_channel = options.fetch(:error_channel)
+    def initialize(*args)
+      extract_options! args
 
-      # Optional overrides for error handling
-      @error_event_class = options[:error_event_class]
-      @logger = options[:logger]
+      # Mandatory, we want results channels. (Error channel is optional).
+      @results_channel = opts :results_channel
     end
 
     def run(endpoints, env)

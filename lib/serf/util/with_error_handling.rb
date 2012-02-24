@@ -2,6 +2,7 @@ require 'active_support/core_ext/string/inflections'
 
 require 'serf/messages/caught_exception_event'
 require 'serf/util/null_object'
+require 'serf/util/with_options_extraction'
 
 module Serf
 module Util
@@ -11,6 +12,7 @@ module Util
   # code, and then logs+publishes the error event.
   #
   module WithErrorHandling
+    include ::Serf::Util::WithOptionsExtraction
 
     ##
     # A block wrapper to handle errors when executing a block.
@@ -24,9 +26,9 @@ module Util
     def with_error_handling(context=nil)
       yield
     rescue => e
-      eec = @error_event_class || ::Serf::Messages::CaughtExceptionEvent
-      logger = @logger || ::Serf::Util::NullObject.new
-      error_channel = @error_channel || ::Serf::Util::NullObject.new
+      eec = opts :error_event_class, ::Serf::Messages::CaughtExceptionEvent
+      logger = opts :logger, ::Serf::Util::NullObject.new
+      error_channel = opts :error_channel, ::Serf::Util::NullObject.new
       error_event = eec.new(
         context: context,
         error: e.class.to_s.tableize,

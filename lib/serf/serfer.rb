@@ -1,4 +1,3 @@
-require 'serf/error'
 require 'serf/util/with_error_handling'
 
 module Serf
@@ -6,19 +5,16 @@ module Serf
   class Serfer
     include ::Serf::Util::WithErrorHandling
 
-    def initialize(options={})
-      # Each route_set has a runner.
-      @route_sets = options[:route_sets] || {}
+    def initialize(*args)
+      extract_options! args
 
-      # Optional overrides for WithErrorHandling
-      @error_channel = options[:error_channel]
-      @error_event_class = options[:error_event_class]
-      @logger = options[:logger]
+      # Each route_set has a runner.
+      @route_sets = opts :route_sets, {}
 
       # Options for handling the requests
-      @not_found = options[:not_found] || proc do
+      @not_found = opts :not_found, lambda { |env|
         raise ArgumentError, 'Handler Not Found'
-      end
+      }
     end
 
     ##
