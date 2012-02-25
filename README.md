@@ -126,7 +126,7 @@ Example
     ['top_level',
       'serf',
       'handler',
-      'results_channel',
+      'response_channel',
       'error_channel'].each do |name|
       logger = Log4r::Logger.new name
       logger.outputters = outputter
@@ -255,7 +255,7 @@ Example
 
       # Create result and error channels for the handler result messages.
       error_channel MyChannel.new(::Log4r::Logger['error_channel'])
-      results_channel MyChannel.new(::Log4r::Logger['results_channel'])
+      response_channel MyChannel.new(::Log4r::Logger['response_channel'])
 
       # We pass in a logger to our Serf code: Serfer and Runners.
       logger ::Log4r::Logger['serf']

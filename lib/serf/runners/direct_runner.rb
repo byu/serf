@@ -15,7 +15,7 @@ module Runners
       extract_options! args
 
       # Mandatory, we want results channels. (Error channel is optional).
-      @results_channel = opts :results_channel
+      @response_channel = opts :response_channel
     end
 
     def run(endpoints, env)
@@ -45,7 +45,7 @@ module Runners
       results = Array(results)
       results.each do |message|
         with_error_handling(message) do
-          @results_channel.publish message
+          @response_channel.publish message
         end
       end
       return nil

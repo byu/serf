@@ -52,7 +52,7 @@ module Serf
 
       # Utility and messaging channels for our Runners
       # NOTE: these are only used if the builder needs to instantiage runners.
-      @results_channel = ::Serf::Util::NullObject.new
+      @response_channel = ::Serf::Util::NullObject.new
       @error_channel = ::Serf::Util::NullObject.new
       @logger = ::Serf::Util::NullObject.new
 
@@ -104,8 +104,8 @@ module Serf
       @route_set_factory = route_set_factory
     end
 
-    def results_channel(results_channel)
-      @results_channel = results_channel
+    def response_channel(response_channel)
+      @response_channel = response_channel
     end
 
     def error_channel(error_channel)
@@ -161,13 +161,13 @@ module Serf
 
       # Get or make our foreground runner
       fg_runner = @foreground_runner_factory.build(
-        results_channel: @results_channel,
+        response_channel: @response_channel,
         error_channel: @error_channel,
         logger: @logger)
 
       # Get or make our background runner
       bg_runner = @background_runner_factory.build(
-        results_channel: @results_channel,
+        response_channel: @response_channel,
         error_channel: @error_channel,
         logger: @logger)
 
