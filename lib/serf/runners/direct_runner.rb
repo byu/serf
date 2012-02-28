@@ -15,13 +15,13 @@ module Runners
       extract_options! args
 
       # Mandatory, we want results channels. (Error channel is optional).
-      @response_channel = opts :response_channel
+      @response_channel = opts! :response_channel
     end
 
     def run(endpoints, env)
       results = []
       endpoints.each do |ep|
-        run_results = with_error_handling(env) do
+        success, run_results = with_error_handling(env) do
           params = ep.message_parser ? ep.message_parser.parse(env) : env
           ep.handler.send(ep.action, params)
         end

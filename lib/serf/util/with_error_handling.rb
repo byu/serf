@@ -24,7 +24,7 @@ module Util
     # * @error_channel - ::Serf::Util::NullObject.new
     #
     def with_error_handling(context=nil)
-      yield
+      return true, yield
     rescue => e
       eec = opts :error_event_class, ::Serf::Messages::CaughtExceptionEvent
       logger = opts :logger, ::Serf::Util::NullObject.new
@@ -40,7 +40,7 @@ module Util
       error_channel.publish error_event
 
       # We're done, so just return this error.
-      return error_event
+      return false, error_event
     end
 
   end
