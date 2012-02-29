@@ -41,10 +41,10 @@ The Serf App, as configured by DSL, will:
   a. The handler's build class method will be given an ENV, which
     may be handled as fit. The Command class will help by parsing it
     into a Message object as registered by the implementing subclass.
-3. publish the handler's results to a response channel.
+3. Push the handler's results to a response channel.
   a. Raised errors are caught and pushed to an error channel.
   b. These channels are normally message queuing channels.
-  c. We only require the channel instance to respond to the 'publish'
+  c. We only require the channel instance to respond to the 'push'
     method and accept a message (or message hash) as the argument.
 4. return the handler's results to the caller if it is blocking mode.
   a. In non-blocking mode, an MessageAcceptedEvent is returned instead
@@ -72,7 +72,7 @@ Service Libraries
   a. Raised errors are caught and pushed to error channels.
 5. Handler methods SHOULD handle catch their business logic exceptions and
   return them as specialized messages that can be forwarded down error channels.
-  Uncaught exceptions that are then caught by Serf are published as
+  Uncaught exceptions that are then caught by Serf are pushed as
   generic Serf::CaughtExceptionEvents, and are harder to deal with.
 
 
@@ -142,7 +142,7 @@ Example
         @logger = logger
         @error = error
       end
-      def publish(message)
+      def push(message)
         if @error
           @logger.fatal "#{message}"
         else

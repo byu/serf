@@ -20,7 +20,7 @@ module Runners
   # the wrapped runner *MUST* handle its own errors. If an error
   # should propagate up here, then it was most likely an error
   # that occurred in a rescue block... we don't want to complicate
-  # any extra publishing to error channels because that may have
+  # any extra pushing to error channels because that may have
   # been the cause of the error.
   #
   class EventMachine

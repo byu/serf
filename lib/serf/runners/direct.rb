@@ -5,12 +5,12 @@ module Runners
 
   ##
   # Direct runner drives the execution of a handler for given messages.
-  # This class deals with error handling and publishing handler results
+  # This class deals with error handling and pushing handler results
   # to proper error or results channels.
   #
   # NOTES:
-  # * Results returned from handlers are published to response channel.
-  # * Errors raised by handlers are published to error channel, not response.
+  # * Results returned from handlers are pushed to response channel.
+  # * Errors raised by handlers are pushed to error channel, not response.
   #
   class Direct
     include ::Serf::Util::WithErrorHandling
@@ -35,7 +35,7 @@ module Runners
         # the Serfer, which means all results should go back to the user
         # as this was a foreground (synchronous) execution.
         results.concat run_result
-        publish_results run_result if ok
+        push_results run_result if ok
       end
       return results
     end
@@ -47,14 +47,14 @@ module Runners
     protected
 
     ##
-    # Loop over the results and publish them to the results channel.
-    # Any error in publishing individual messages will result in
+    # Loop over the results and push them to the response channel.
+    # Any error in pushing individual messages will result in
     # a log event and an error channel event.
-    def publish_results(results)
+    def push_results(results)
       response_channel = opts! :response_channel
       results.each do |message|
         with_error_handling(message) do
-          response_channel.publish message
+          response_channel.push message
         end
       end
       return nil

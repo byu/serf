@@ -60,7 +60,7 @@ module Serf
     # * Any error in matching will be raised to the caller, not absorbed by
     #   the error handler.
     # * Any error in Handler creation from endpoint will be caught by the
-    #   error handler, (1) published to the error channel and (2)
+    #   error handler, (1) pushed to the error channel and (2)
     #   an error event will included in the results pass back to caller.
     #   (a) There may be successul handlers created that can complete.
     # * If the runner raises an error, it will be caught and the error
@@ -69,7 +69,7 @@ module Serf
     #   Each runner SHOULD do their own error handling so errors in
     #   one handler will not affect another in the list of handlers the runner
     #   is to process.
-    # * RUNNERS MUST publish errors they catch to the error channel.
+    # * RUNNERS MUST push errors they catch to the error channel.
     #
     def process_request(env)
       # This will be the work we need to do.
@@ -109,7 +109,7 @@ module Serf
       end
 
       # We call the runners with the handlers they need to execute.
-      # Errors raised by the runner are published to the error channel.
+      # Errors raised by the runner are pushed to the error channel.
       # Errors here are also passed back the caller of the SerfApp.
       #
       tasks.each do |runner, handlers|

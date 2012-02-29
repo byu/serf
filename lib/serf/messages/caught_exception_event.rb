@@ -9,7 +9,7 @@ module Messages
   # exception during the processing of some message, which is
   # represented by the context field.
   #
-  # Instances of this class are norminally published to an
+  # Instances of this class are norminally pushed to an
   # error channel for out of band processing/notification.
   #
   class CaughtExceptionEvent

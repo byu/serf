@@ -9,7 +9,7 @@ module Util
 
   ##
   # Helper module to rescues exceptions from executing blocks of
-  # code, and then logs+publishes the error event.
+  # code, and then logs+pushes the error event.
   #
   module WithErrorHandling
     include ::Serf::Util::WithOptionsExtraction
@@ -38,10 +38,10 @@ module Util
       # log the error to our logger, and to our error channel.
       logger.error error_event
       begin
-        error_channel.publish error_event
+        error_channel.push error_event
       rescue => e1
         logger.error("
-          Failed publishing to ErrorChannel:
+          Failed pushing to ErrorChannel:
           #{e1.message}
           #{e1.backtrace.join('\n')}
         ")
