@@ -17,7 +17,7 @@ module Runners
 
     def initialize(*args)
       extract_options! args
-      response_channel = opts! :response_channel
+      opts! :response_channel
     end
 
     def call(handlers, context)
