@@ -1,7 +1,7 @@
 require 'eventmachine'
 
 require 'serf/messages/message_accepted_event'
-require 'serf/runners/direct_runner'
+require 'serf/runners/direct'
 require 'serf/util/with_error_handling'
 
 module Serf
@@ -23,13 +23,13 @@ module Runners
   # any extra publishing to error channels because that may have
   # been the cause of the error.
   #
-  class EmRunner
+  class EventMachine
     include ::Serf::Util::WithErrorHandling
 
     def initialize(*args)
       extract_options! args
 
-      # Manditory: Need a runner because EmRunner is just a wrapper.
+      # Manditory: Need a runner because this class is just a wrapper.
       @runner = opts! :runner
 
       @mae_class = opts(
@@ -59,7 +59,7 @@ module Runners
 
     def self.build(options={})
       options[:runner] = options.fetch(:runner) {
-        factory = options[:runner_factory] || ::Serf::Runners::DirectRunner
+        factory = options[:runner_factory] || ::Serf::Runners::Direct
         factory.build options
       }
       self.new options

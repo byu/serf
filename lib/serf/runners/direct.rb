@@ -12,7 +12,7 @@ module Runners
   # * Results returned from handlers are published to response channel.
   # * Errors raised by handlers are published to error channel, not response.
   #
-  class DirectRunner
+  class Direct
     include ::Serf::Util::WithErrorHandling
 
     def initialize(*args)

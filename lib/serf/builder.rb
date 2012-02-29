@@ -1,7 +1,7 @@
 require 'serf/routing/endpoint'
 require 'serf/routing/registry'
-require 'serf/runners/direct_runner'
-require 'serf/runners/em_runner'
+require 'serf/runners/direct'
+require 'serf/runners/event_machine'
 require 'serf/serfer'
 require 'serf/util/null_object'
 require 'serf/util/with_options_extraction'
@@ -107,12 +107,12 @@ module Serf
     def runner(type)
       @runner_factory = case type
       when :direct
-        ::Serf::Runners::DirectRunner
+        ::Serf::Runners::Direct
       when :eventmachine
-        ::Serf::Runners::EmRunner
+        ::Serf::Runners::EventMachine
       when :girl_friday
         raise NotImplementedError
-        ::Serf::Runners::GirlFridayRunner
+        ::Serf::Runners::GirlFriday
       else
         raise 'No callable runner' unless type.respond_to? :call
         type
