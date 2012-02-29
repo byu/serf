@@ -15,7 +15,7 @@ manner.
 
 Fundamentally, a service creates an abstraction of:
 1. Messages
-2. Handlers
+2. Handlers/Commands
 
 Messages are the representation of data, documents, etc that are
 marshalled from client to service, which represents the business
@@ -29,22 +29,22 @@ Handlers are the code that is executed over Messages.
 Handlers may process Command Messages.
 Handlers may process observed Events that 3rd party services emit.
 
-Services SHOULD declare a manifest to map messages to handlers, which
-allows Serf to route messages and to determine blocking or non-blocking modes.
-
 Serf App and Channels
 =====================
 
 A Serf App is a Rack-like application that accepts an ENV hash as input.
 This ENV hash is simply the hash representation of a message to be processed.
-The Serf App, as configured by registered manifests, will:
-1. route the ENV to the proper handler
-2. run the handler in blocking or non-blocking mode.
-  a. The handler's serf call method will parse the ENV into a message object
-    if the handler registered a Message class.
-3. publish the handler's results to results or error channels.
-  a. These channels are normally message queuing channels.
-  b. We only require the channel instance to respond to the 'publish'
+
+The Serf App, as configured by DSL, will:
+1. route the ENV to the proper Endpoint
+2. The endpoint will create a handler instance.
+  a. The handler's build class method will be given an ENV, which
+    may be handled as fit. The Command class will help by parsing it
+    into a Message object as registered by the implementing subclass.
+3. publish the handler's results to a response channel.
+  a. Raised errors are caught and pushed to an error channel.
+  b. These channels are normally message queuing channels.
+  c. We only require the channel instance to respond to the 'publish'
     method and accept a message (or message hash) as the argument.
 4. return the handler's results to the caller if it is blocking mode.
   a. In non-blocking mode, an MessageAcceptedEvent is returned instead
@@ -65,9 +65,11 @@ Service Libraries
     hashes that define at least one attribute: 'kind'.
 2. Serialization of the messages SHOULD BE Json or MessagePack (I hate XML).
   a. `to_hash` is also included.
-3. Handler methods MUST receive a message as either as an options hash
-  (with symbolized keys) or an instance of a declared Message.
-4. Handler methods MUST return zero or more messages.
+3. Handlers MUST implement the 'build' class method, which
+  MUST receive the ENV Hash as the first parameter, followed by supplemental
+  arguments as declared in the DSL.
+4. Handler methods SHOULD return zero or more messages.
+  a. Raised errors are caught and pushed to error channels.
 5. Handler methods SHOULD handle catch their business logic exceptions and
   return them as specialized messages that can be forwarded down error channels.
   Uncaught exceptions that are then caught by Serf are published as
@@ -111,23 +113,24 @@ Example
 =======
 
     # Require our libraries
-    require 'active_model'
     require 'log4r'
     require 'json'
 
     require 'serf/builder'
+    require 'serf/command'
     require 'serf/message'
     require 'serf/middleware/uuid_tagger'
+    require 'serf/util/with_options_extraction'
 
     # create a simple logger for this example
     outputter = Log4r::FileOutputter.new(
       'fileOutputter',
       filename: 'log.txt')
-    ['top_level',
+    ['tick',
       'serf',
-      'handler',
-      'response_channel',
-      'error_channel'].each do |name|
+      'hndl',
+      'resp',
+      'errr'].each do |name|
       logger = Log4r::Logger.new name
       logger.outputters = outputter
     end
@@ -135,130 +138,113 @@ Example
     # Helper class for this example to receive result or error messages
     # and pipe it into our logger.
     class MyChannel
-      def initialize(logger)
+      def initialize(logger, error=false)
         @logger = logger
+        @error = error
       end
       def publish(message)
-        @logger.info "#{message}"
+        if @error
+          @logger.fatal "#{message}"
+        else
+          @logger.debug "#{message}"
+        end
       end
     end
 
     # my_lib/my_message.rb
+    # This class is stripped down minimal functionality that
+    # ActiveModel or Aequitas/Virtus implements.
     class MyMessage
+      include Serf::Util::WithOptionsExtraction
       include Serf::Message
-      include ActiveModel::Validations
 
       attr_accessor :data
 
-      validates_presence_of :data
-
-      def initialize(options={})
-        @data = options[:data]
+      def initialize(*args)
+        extract_options! args
+        self.data = opts :data
       end
 
-      # We define this for Serf::Message serialization.
       def attributes
         { 'data' => data }
       end
 
-    end
-
-    # my_lib/my_handler.rb
-    class MyHandler
-
-      def initialize(options={})
-        @logger = options[:logger]
+      def valid?
+        !data.nil?
       end
 
-      def submit_my_message(message)
-        @logger.info "In Submit My Message: #{message.to_json}"
-        # Validate message because we have implement my_message with it.
-        unless message.valid?
-          raise ArgumentError, message.errors.full_messages.join(',')
-        end
+      def full_error_messages
+        'Data is blank' if data.nil?
+      end
+    end
+
+    # my_lib/my_overloaded_command.rb
+    class MyOverloadedCommand < Serf::Command
+
+      def initialize(*args)
+        super
+        raise "Constructor Error: #{opts(:name)}" if opts :raises_in_new
+      end
+
+      def call
+        # Set our logger
+        logger = ::Log4r::Logger['hndl']
+
+        # Just our name to sort things out
+        name = opts! :name
+        logger.info "#{name}: #{request.to_json}"
+
+        raise "Forcing Error in #{name}" if opts(:raises, false)
+
         # Do work Here...
         # And return 0 or more messages as result. Nil is valid response.
-        return { kind: 'my_message_results' }
+        return { kind: "#{name}_result", input: request.to_hash }
       end
 
-      def submit_other_message(message={})
-        # The message here is the ENV hash because we didn't declare
-        # an :as option with `receives`.
-        @logger.info "In Submit OtherMessage: #{message.inspect.to_s}"
-        return [
-          { kind: 'other_message_result1' },
-          { kind: 'other_message_result2' }
-        ]
+      def inspect
+        "MyOverloadedCommand: #{opts(:name,'notnamed')}, #{request.to_json}"
       end
 
-      def raises_error(message={})
-        @logger.info 'In Raises Error, about to raise error'
-        raise 'My Handler Runtime Error'
-      end
+      protected
 
-      def regexp_matched(message={})
-        @logger.info "RegExp Matched #{message.inspect}"
-        nil
-      end
-
-      def call(message={})
-        @logger.info "A message matched an empty action part in the target"
-        nil
+      def request_parser
+        MyMessage
       end
     end
-
-    # my_lib/routes.rb
-    ROUTES = {
-      # Declare a matcher and a list of routes to endpoints.
-      # We can declare a single route.
-      'my_message' => {
-        # Declares which handler and action (method) of the handler
-        # to call. The handler part is the name of the handler used
-        # to register an actual handler object.
-        target: 'my_handler#submit_my_message',
-
-        # Define a parser that will build up a message object.
-        # Default: nil, no parsing done.
-        # Or name of registered parser to use.
-        message_parser: 'my_parser',
-
-        # Default is process in foreground.
-        #background: false
-      },
-      # This message kind is handled by multiple handlers.
-      'other_message' => [{
-        target: 'my_handler#submit_other_message',
-        background: true
-      }, {
-        target: 'my_handler#raises_error',
-        background: true
-      },
-        # This is just a string route defining the target, nothing else.
-        # The handler is 'my_handler' and an empty (or missing) action
-        # part defaults to the 'call' method of the handler.
-        'my_handler'
-      ],
-      /^events\/.*$/ => 'my_handler#regexp_matched'
-    }
 
     # Create a new builder for this serf app.
     builder = Serf::Builder.new do
       # Include some middleware
       use Serf::Middleware::UuidTagger
 
-      # Registers routes from different service libary manifests.
-      routes ROUTES
-
-      # Can define arguments to pass to the 'my_handler' initialize method.
-      handler 'my_handler', MyHandler.new(logger: ::Log4r::Logger['handler'])
-      message_parser 'my_parser', MyMessage
-
-      # Create result and error channels for the handler result messages.
-      error_channel MyChannel.new(::Log4r::Logger['error_channel'])
-      response_channel MyChannel.new(::Log4r::Logger['response_channel'])
+      # Create response and error channels for the handler result messages.
+      response_channel MyChannel.new(::Log4r::Logger['resp'])
+      error_channel MyChannel.new(::Log4r::Logger['errr'], true)
 
       # We pass in a logger to our Serf code: Serfer and Runners.
       logger ::Log4r::Logger['serf']
+
+      runner :direct
+
+      match 'my_message'
+      run MyOverloadedCommand, name: 'my_message_command'
+
+      match 'raise_error_message'
+      run MyOverloadedCommand, name: 'foreground_raises_error', raises: true
+      run MyOverloadedCommand, name: 'constructor_error', raises_in_new: true
+
+      match 'other_message'
+      run MyOverloadedCommand, name: 'foreground_other_message'
+
+      runner :eventmachine
+
+      # This message kind is handled by multiple handlers.
+      match 'other_message'
+      run MyOverloadedCommand, name: 'background_other_message'
+      run MyOverloadedCommand, name: 'background_raises error', raises: true
+
+      match /^events\/.*$/
+      run MyOverloadedCommand, name: 'regexp_matched_command'
 
       # Optionally define a not found handler...
       # Defaults to raising an ArgumentError, 'Not Found'.
@@ -267,7 +253,7 @@ Example
     app = builder.to_app
 
     # Start event machine loop.
-    logger = ::Log4r::Logger['top_level']
+    logger = ::Log4r::Logger['tick']
     EM.run do
       # On the next tick
       EM.next_tick do
@@ -277,28 +263,46 @@ Example
         # NOTE: We should get an error message pushed to the error channel
         #  because no 'data' field was put in my_message as required
         #  And the Result should have a CaughtExceptionEvent.
-        results = app.call('kind' => 'my_message')
-        logger.info "In Tick, MyMessage Results: #{results.inspect}"
+        logger.info "BEG MyMessage w/o Data"
+        results = app.call 'kind' => 'my_message'
+        logger.info "END MyMessage w/o Data: #{results.size} #{results.to_json}"
 
         # Here is good result
-        results = app.call('kind' => 'my_message', 'data' => '1234')
-        logger.info "In Tick, MyMessage Results: #{results.inspect}"
+        logger.info "BEG MyMessage w/ Data"
+        results = app.call 'kind' => 'my_message', 'data' => '1'
+        logger.info "END MyMessage w/ Data: #{results.size} #{results.to_json}"
 
-        # This will submit 'other_message' to be handled in foreground
-        # Because we declared the 'other_message' kind to be handled async
-        # in each route config, we should get a MessageAcceptedEvent as
-        # the results.
-        results = app.call('kind' => 'other_message')
-        logger.info "In Tick, OtherMessage Results: #{results.inspect}"
+        # Here is a result that will raise an error in foreground
+        # We should get two event messages in the results because we
+        # mounted two commands to the raise_error_message kind.
+        # Each shows errors being raised in two separate stages.
+        # 1. Error in creating the instance of the command.
+        # 2. Error when the command was executed by the foreground runner.
+        logger.info "BEG RaisesErrorMessage"
+        results = app.call 'kind' => 'raise_error_message', 'data' => '2'
+        logger.info "END RaisesErrorMessage: #{results.size} #{results.to_json}"
 
-        # This will match a regexp
-        results = app.call('kind' => 'events/my_event')
-        logger.info "In Tick, Regexp Results: #{results.inspect}"
+        # This submission will be executed by THREE commands.
+        #   One in the foreground, two in the background.
+        #
+        # The foreground results should be:
+        # * MessageAcceptedEvent
+        # * And return result of one command call
+        #
+        # The error channel should output an error from one background command.
+        logger.info "BEG OtherMessage"
+        results = app.call 'kind' => 'other_message', 'data' => '3'
+        logger.info "END OtherMessage: #{results.size} #{results.to_json}"
+
+        # This will match a regexp call
+        logger.info "BEG Regexp"
+        results = app.call 'kind' => 'events/my_event', 'data' => '4'
+        logger.info "END Regexp Results: #{results.size} #{results.to_json}"
 
         begin
           # Here, we're going to submit a message that we don't handle.
           # By default, an exception will be raised.
-          app.call('kind' => 'unhandled_message_kind')
+          app.call 'kind' => 'unhandled_message_kind'
         rescue => e
           logger.warn "Caught in Tick: #{e.inspect}"
         end

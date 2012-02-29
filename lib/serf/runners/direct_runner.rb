@@ -8,25 +8,34 @@ module Runners
   # This class deals with error handling and publishing handler results
   # to proper error or results channels.
   #
+  # NOTES:
+  # * Results returned from handlers are published to response channel.
+  # * Errors raised by handlers are published to error channel, not response.
+  #
   class DirectRunner
     include ::Serf::Util::WithErrorHandling
 
     def initialize(*args)
       extract_options! args
-
-      # Mandatory, we want results channels. (Error channel is optional).
-      @response_channel = opts! :response_channel
+      response_channel = opts! :response_channel
     end
 
-    def run(endpoints, env)
+    def call(handlers, context)
       results = []
-      endpoints.each do |ep|
-        success, run_results = with_error_handling(env) do
-          params = ep.message_parser ? ep.message_parser.parse(env) : env
-          ep.handler.send(ep.action, params)
+      handlers.each do |handler|
+        ok, run_result = with_error_handling(context) do
+          handler.call
         end
-        results.concat Array(run_results)
-        publish_results run_results
+        run_result = run_result.is_a?(Hash) ? [run_result] : Array(run_result)
+
+        # We only post to the response channel if we didn't catch and error.
+        # But we add both error and success results to the 'results' to
+        # pass back to the caller of the runner. This may be a background
+        # runner, which then the results are ignored. But it may have been
+        # the Serfer, which means all results should go back to the user
+        # as this was a foreground (synchronous) execution.
+        results.concat run_result
+        publish_results run_result if ok
       end
       return results
     end
@@ -42,10 +51,10 @@ module Runners
     # Any error in publishing individual messages will result in
     # a log event and an error channel event.
     def publish_results(results)
-      results = Array(results)
+      response_channel = opts! :response_channel
       results.each do |message|
         with_error_handling(message) do
-          @response_channel.publish message
+          response_channel.publish message
         end
       end
       return nil

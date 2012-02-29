@@ -2,6 +2,7 @@ require 'eventmachine'
 
 require 'serf/messages/message_accepted_event'
 require 'serf/runners/direct_runner'
+require 'serf/util/with_error_handling'
 
 module Serf
 module Runners
@@ -23,29 +24,37 @@ module Runners
   # been the cause of the error.
   #
   class EmRunner
+    include ::Serf::Util::WithErrorHandling
 
-    def initialize(options={})
+    def initialize(*args)
+      extract_options! args
+
       # Manditory: Need a runner because EmRunner is just a wrapper.
-      @runner = options.fetch(:runner)
+      @runner = opts! :runner
 
-      @mae_class = options.fetch(:message_accepted_event_class) {
-        ::Serf::Messages::MessageAcceptedEvent
-      }
-      @evm = options.fetch(:event_machine) { ::EventMachine }
-      @logger = options.fetch(:logger) { ::Serf::Util::NullObject.new }
+      @mae_class = opts(
+        :message_accepted_event_class,
+        ::Serf::Messages::MessageAcceptedEvent)
+
+      @evm = opts :event_machine, ::EventMachine
+      @logger = opts :logger, ::Serf::Util::NullObject.new
     end
 
-    def run(endpoints, env)
-      endpoints = endpoints.dup
-      env = env.dup
-      @evm.defer(proc do
-        begin
-          @runner.run endpoints, env
-        rescue => e
-          @logger.error "#{e.inspect}\n\n#{e.backtrace.join("\n")}"
-        end
-      end)
-      return @mae_class.new message: env
+    def call(handlers, context)
+      # This queues up each handler to be run separately.
+      handlers.each do |handler|
+        @evm.defer(proc do
+          begin
+            with_error_handling(context) do
+              @runner.call [handler], context
+            end
+          rescue => e
+            @logger.fatal(
+              "EventMachineThread: #{e.inspect}\n\n#{e.backtrace.join("\n")}")
+          end
+        end)
+      end
+      return @mae_class.new(message: context)
     end
 
     def self.build(options={})

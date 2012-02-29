@@ -18,11 +18,17 @@ group :development, :test do
   gem 'jeweler', '~> 1.6.4'
   gem 'simplecov', '>= 0'
 
+  # For our testing
+  gem 'log4r', '~> 1.1.10'
+
   # Soft Dependencies
   #gem 'log4r', '~> 1.1.9'
   gem 'msgpack', '>= 0.4.6'
   #gem 'multi_json', '~> 1.0.3'
 
   # For Server Side of things
+
+  # EventMachine is now optional runner
   gem 'eventmachine', '>= 0.12.10'
+  #gem 'girl_friday', '~> 0.9.7'
 end
