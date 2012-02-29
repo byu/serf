@@ -37,7 +37,15 @@ module Util
 
       # log the error to our logger, and to our error channel.
       logger.error error_event
-      error_channel.publish error_event
+      begin
+        error_channel.publish error_event
+      rescue => e1
+        logger.error("
+          Failed publishing to ErrorChannel:
+          #{e1.message}
+          #{e1.backtrace.join('\n')}
+        ")
+      end
 
       # We're done, so just return this error.
       return false, error_event
