@@ -94,7 +94,9 @@ module Util
     # Extracts the options from the arguments list.
     #
     def extract_options!(args)
-      _, @options = args.last.is_a?(::Hash) ? [true, args.pop] : [false, {}]
+      _, @options = args.last.is_a?(::Hash) ?
+        [true, args.pop.dup] :
+        [false, {}]
     end
 
   end
