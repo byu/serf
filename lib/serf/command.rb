@@ -29,7 +29,7 @@ module Serf
 
       # We must first verify that the request is valid.
       unless @request.valid?
-        raise ArgumentError, @request.errors.full_messages.join('. ')
+        raise ArgumentError, @request.full_error_messages
       end
     end
 
@@ -38,7 +38,11 @@ module Serf
     end
 
     def self.call(request, *args)
-      self.new(request, *args).call
+      self.build(request, *args).call
+    end
+
+    def self.build(request, *args)
+      self.new(request, *args)
     end
 
     protected
