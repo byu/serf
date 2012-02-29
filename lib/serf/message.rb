@@ -39,6 +39,10 @@ module Serf
       self.class
     end
 
+    def full_error_messages
+      errors.full_messages.join '. '
+    end
+
     module ClassMethods
 
       def parse(*args)
