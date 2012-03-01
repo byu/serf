@@ -24,7 +24,7 @@ module Runners
   # been the cause of the error.
   #
   class EventMachine
-    include ::Serf::Util::WithErrorHandling
+    include Serf::Util::WithErrorHandling
 
     def initialize(*args)
       extract_options! args
