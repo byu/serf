@@ -54,9 +54,10 @@ module Util
     #   Options Hash returns a nil because of either a
     #   non-existent key or a nil value in said hash for said key.
     #
-    def opts(key, default=nil)
+    def opts(key, default=nil, &block)
       value = options[key]
       value = default if value.nil?
+      value = block.call if value.nil? && block
       return value
     end
 
@@ -84,8 +85,8 @@ module Util
     #
     # Raises error when `opts` returns a nil.
     #
-    def opts!(key, default=nil)
-      value = opts key, default
+    def opts!(key, default=nil, &block)
+      value = opts key, default, &block
       raise "Nil value found for option: #{key}, #{default}" if value.nil?
       return value
     end
