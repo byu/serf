@@ -1,3 +1,4 @@
+require 'serf/runners/helper'
 require 'serf/util/with_error_handling'
 
 module Serf
@@ -13,7 +14,8 @@ module Runners
   # * Errors raised by handlers are pushed to error channel, not response.
   #
   class Direct
-    include ::Serf::Util::WithErrorHandling
+    include Serf::Util::WithErrorHandling
+    include Serf::Runners::Helper
 
     def initialize(*args)
       extract_options! args
@@ -42,22 +44,6 @@ module Runners
 
     def self.build(options={})
       self.new options
-    end
-
-    protected
-
-    ##
-    # Loop over the results and push them to the response channel.
-    # Any error in pushing individual messages will result in
-    # a log event and an error channel event.
-    def push_results(results)
-      response_channel = opts! :response_channel
-      results.each do |message|
-        with_error_handling(message) do
-          response_channel.push message
-        end
-      end
-      return nil
     end
 
   end
