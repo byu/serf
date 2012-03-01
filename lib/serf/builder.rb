@@ -1,7 +1,6 @@
 require 'serf/routing/endpoint'
 require 'serf/routing/registry'
 require 'serf/runners/direct'
-require 'serf/runners/event_machine'
 require 'serf/serfer'
 require 'serf/util/null_object'
 require 'serf/util/with_options_extraction'
@@ -50,6 +49,7 @@ module Serf
 
       # Set up the starting state for our DSL calls.
       @runner_matcher_endpoint_map = {}
+      @runner_params = {}
       runner :direct
       @matcher = nil
 
@@ -108,15 +108,30 @@ module Serf
       @runner_factory = case type
       when :direct
         ::Serf::Runners::Direct
-      when :eventmachine
-        ::Serf::Runners::EventMachine
+      when :event_machine
+        begin
+          require 'serf/runners/event_machine'
+          Serf::Runners::EventMachine
+        rescue NameError => e
+          e.extend Serf::Error
+          raise e
+        end
       when :girl_friday
-        raise NotImplementedError
-        ::Serf::Runners::GirlFriday
+        begin
+          require 'serf/runners/girl_friday'
+          Serf::Runners::GirlFriday
+        rescue NameError => e
+          e.extend Serf::Error
+          raise e
+        end
       else
-        raise 'No callable runner' unless type.respond_to? :call
+        raise 'No callable runner' unless type.respond_to? :build
         type
       end
+    end
+
+    def params(*args)
+      @runner_params[@runner_factory] = args
     end
 
     ##
@@ -153,10 +168,13 @@ module Serf
         # Ok, we'll create the runner and add it to our registries hash
         # if we actually have endpoints here.
         if registry.size > 0
-          runner = runner_factory.build(
-            response_channel: @response_channel,
-            error_channel: @error_channel,
-            logger: @logger)
+          runner_params = @runner_params[runner_factory] ?
+            @runner_params[runner_factory] :
+            []
+          runner_params << (runner_params.last.is_a?(Hash) ?
+            runner_params.pop.merge(serf_options) :
+            serf_options)
+          runner = runner_factory.build *runner_params
           registries[runner] = registry
         end
       end

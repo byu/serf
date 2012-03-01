@@ -30,5 +30,5 @@ group :development, :test do
 
   # EventMachine is now optional runner
   gem 'eventmachine', '>= 0.12.10'
-  #gem 'girl_friday', '~> 0.9.7'
+  gem 'girl_friday', '~> 0.9.7'
 end
