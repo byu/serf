@@ -25,10 +25,19 @@ module Serf
       extract_options! args
       @args = args
 
-      @request = request.is_a?(Hash) ? request_parser.parse(request) : request
+      # If the request was a hash, we MAY be able to parse it into an
+      # object. We only do this if a request_parser is defined by
+      # an implementing subclass. Otherwise, just give the command
+      # the hash, and it is up to them to understand what was given
+      # to it.
+      @request = (
+        request.is_a?(Hash) && request_parser ?
+        request_parser.parse(request) :
+        request)
 
-      # We must first verify that the request is valid.
-      unless @request.valid?
+      # We must verify that the request is valid, but only if the
+      # request object isn't a hash.
+      unless @request.is_a?(Hash) || @request.valid?
         raise ArgumentError, @request.full_error_messages
       end
     end
@@ -48,7 +57,7 @@ module Serf
     protected
 
     def request_parser
-      raise ArgumentError, 'Parsing Hash request is Not Supported'
+      nil
     end
 
   end
