@@ -46,12 +46,12 @@ module Serf
       raise NotImplementedError
     end
 
-    def self.call(request, *args)
-      self.build(request, *args).call
+    def self.call(*args)
+      self.build(*args).call
     end
 
-    def self.build(request, *args)
-      self.new(request, *args)
+    def self.build(*args)
+      self.new *args
     end
 
     protected
