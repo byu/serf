@@ -20,6 +20,7 @@ module Serf
     include Serf::Util::WithOptionsExtraction
 
     attr_reader :request
+    attr_reader :args
 
     def initialize(request, *args)
       extract_options! args
