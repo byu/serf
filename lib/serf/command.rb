@@ -22,7 +22,9 @@ module Serf
     attr_reader :request
     attr_reader :args
 
-    def initialize(request, *args)
+    def initialize(*args)
+      request = args.shift
+      request = {} if request.nil?
       extract_options! args
       @args = args
 
