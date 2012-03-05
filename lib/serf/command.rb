@@ -12,7 +12,7 @@ module Serf
   #     end
   #     protected
   #     def request_parser
-  #       @opts[:request_parser] || MySerfRequestMessage
+  #       opts :request_parser, MySerfRequestMessage
   #     end
   #   end
   #
@@ -23,8 +23,8 @@ module Serf
     attr_reader :args
 
     def initialize(*args)
-      request = args.shift
-      request = {} if request.nil?
+      req = args.shift
+      req = {} if req.nil?
       extract_options! args
       @args = args
 
@@ -34,15 +34,19 @@ module Serf
       # the hash, and it is up to them to understand what was given
       # to it.
       @request = (
-        request.is_a?(Hash) && request_parser ?
-        request_parser.parse(request) :
-        request)
+        req.is_a?(Hash) && request_parser ?
+        request_parser.parse(req) :
+        req)
 
       # We must verify that the request is valid, but only if the
       # request object isn't a hash.
-      unless @request.is_a?(Hash) || @request.valid?
-        raise ArgumentError, @request.full_error_messages
+      unless request.is_a?(Hash) || request.valid?
+        raise ArgumentError, request.full_error_messages
       end
+
+      # We're adding a forced validation here for any Command specific
+      # validation that may not be covered in the request itself.
+      validate!
     end
 
     def call
@@ -60,6 +64,13 @@ module Serf
     protected
 
     def request_parser
+      nil
+    end
+
+    ##
+    # Override this method to do any command specific validation that
+    # may not be covered by the request object's validation method.
+    def validate!
       nil
     end
 
