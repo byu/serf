@@ -14,7 +14,7 @@ module Serf
   #     # Set a default Message Parser for the class.
   #     self.request_parser = MySerfRequestMessage
   #
-  #     def initialize(*args)
+  #     def initialize(*args, &block)
   #       # Do some validation here, or extra parameter setting with the args
   #     end
   #
@@ -25,6 +25,11 @@ module Serf
   #   end
   #
   #   MyCommand.call(REQUEST_ENV, some, extra, params, options_hash, &block)
+  #
+  #   # Built in lambda wrapping to use the MyCommand with GirlFriday.
+  #   worker = MyCommand.worker some, extra, params, options_hash, &block
+  #   work_queue = GirlFriday::WorkQueue.new &worker
+  #   work_queue.push REQUEST_ENV
   #
   module Command
     extend ActiveSupport::Concern
@@ -41,10 +46,17 @@ module Serf
 
     module ClassMethods
 
+      ##
+      # Class method that both builds then executes the unit of work.
+      #
       def call(*args, &block)
         self.build(*args, &block).call
       end
 
+      ##
+      # Factory build method that creates an object of the implementing
+      # class' unit of work with the given parameters.
+      #
       def build(*args, &block)
         # The very first argument is the Request, we shift it off the args var.
         req = args.shift
@@ -66,6 +78,10 @@ module Serf
         return obj
       end
 
+      ##
+      # Used by the build class method to parse the request ENV hash
+      # into a request object. Also validates the request hash.
+      #
       def parse_request(req, parser=nil)
         parser = self.request_parser if parser.nil?
 
@@ -85,6 +101,17 @@ module Serf
         end
 
         return request
+      end
+
+      ##
+      # Generates a curried function to execute a Command's call class method.
+      #
+      # @returns lambda block to execute a call.
+      #
+      def worker(*args, &block)
+        lambda { |message|
+          self.call message, *args, &block
+        }
       end
 
     end
