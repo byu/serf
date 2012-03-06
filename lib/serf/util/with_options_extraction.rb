@@ -32,8 +32,6 @@ module Util
       return @options || {}
     end
 
-    protected
-
     ##
     # Helper method to lookup an option from our options hash.
     #
@@ -90,6 +88,8 @@ module Util
       raise "Nil value found for option: #{key}, #{default}" if value.nil?
       return value
     end
+
+    protected
 
     ##
     # Extracts the options from the arguments list.
