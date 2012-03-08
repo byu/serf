@@ -42,6 +42,8 @@ module Serf
       e.extend(::Serf::Error)
       raise e
     end
+    alias_method :push, :call
+    alias_method :<<, :call
 
     def self.build(options={})
       self.new options
