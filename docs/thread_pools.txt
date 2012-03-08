@@ -1,0 +1,16 @@
+Serf drives the incoming requests using runners. Each runner
+is implemented to either perform tasks synchronously or asynchronously.
+For asynchronous background processing, we rely on third party
+libraries. The following is a list of current and (hopefully) future
+libraries we hope to support.
+
+Implemented Runners:
+  * EventMachine http://rubyeventmachine.com/
+  * GirlFriday https://github.com/mperham/girl_friday
+
+TBD ThreadPool Libraries:
+  * ThreadPool https://github.com/danielbush/ThreadPool
+  * Threadz https://github.com/nanodeath/threadz
+  * Celluloid https://github.com/tarcieri/celluloid
+  * Resque https://github.com/defunkt/resque
+  * DelayedJob https://github.com/tobi/delayed_job
