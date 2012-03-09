@@ -12,7 +12,7 @@ module Serf
   #     include Serf::Command
   #
   #     # Set a default Message Parser for the class.
-  #     self.request_parser = MySerfRequestMessage
+  #     self.request_factory = MySerfRequestMessage
   #
   #     def initialize(*args, &block)
   #       # Do some validation here, or extra parameter setting with the args
@@ -36,12 +36,20 @@ module Serf
     include Serf::Util::WithOptionsExtraction
 
     included do
-      class_attribute :request_parser
+      class_attribute :request_factory
       attr_reader :request
     end
 
     def call
       raise NotImplementedError
+    end
+
+    def validate_request!
+      # We must verify that the request is valid, but only if the
+      # request object isn't a hash.
+      unless request.is_a?(Hash) || request.valid?
+        raise ArgumentError, request.full_error_messages
+      end
     end
 
     module ClassMethods
@@ -67,40 +75,26 @@ module Serf
         obj = allocate
         obj.send :__send__, :extract_options!, args
 
-        # We've got a request object, so let's go ahead and set it as the
-        # object's instance variable.
-        request = self.parse_request req, obj.opts(:request_parser)
+        # If the request was a hash, we MAY be able to convert it into a
+        # request object. We only do this if a request_factory was set either
+        # in the options, or if the request_factory class attribute is set.
+        # Otherwise, just give the command the hash, and it is up to them
+        # to understand what was given to it.
+        factory = obj.opts :request_factory, self.request_factory
+        request = (req.is_a?(Hash) && factory ? factory.build(req) : req)
+
+        # Set the request instance variable to whatever type of request we got.
         obj.instance_variable_set :@request, request
 
-        # Finalize the object's construction  with the rest of the args & block.
+        # Now validate that the request is ok.
+        # Implementing classes MAY override this method to do different
+        # kind of request validation.
+        obj.validate_request!
+
+        # Finalize the object's construction with the rest of the args & block.
         obj.send :__send__, :initialize, *args, &block
 
         return obj
-      end
-
-      ##
-      # Used by the build class method to parse the request ENV hash
-      # into a request object. Also validates the request hash.
-      #
-      def parse_request(req, parser=nil)
-        parser = self.request_parser if parser.nil?
-
-        # If the request was a hash, we MAY be able to parse it into an
-        # object. We only do this if a request_parser class attribute is set.
-        # Otherwise, just give the command the hash, and it is up to them
-        # to understand what was given to it.
-        request = (
-          req.is_a?(Hash) && parser ?
-          parser.parse(req) :
-          req)
-
-        # We must verify that the request is valid, but only if the
-        # request object isn't a hash.
-        unless request.is_a?(Hash) || request.valid?
-          raise ArgumentError, request.full_error_messages
-        end
-
-        return request
       end
 
       ##
