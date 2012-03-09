@@ -45,8 +45,12 @@ module Serf
 
     module ClassMethods
 
-      def parse(*args)
-        self.new *args
+      def parse(*args, &block)
+        self.new *args, &block
+      end
+
+      def build(*args, &block)
+        self.new *args, &block
       end
 
     end
