@@ -120,7 +120,7 @@ Example
     require 'serf/command'
     require 'serf/message'
     require 'serf/middleware/uuid_tagger'
-    require 'serf/util/with_options_extraction'
+    require 'serf/util/options_extraction'
 
     # create a simple logger for this example
     outputter = Log4r::FileOutputter.new(
@@ -155,7 +155,7 @@ Example
     # This class is stripped down minimal functionality that
     # ActiveModel or Aequitas/Virtus implements.
     class MyMessage
-      include Serf::Util::WithOptionsExtraction
+      include Serf::Util::OptionsExtraction
       include Serf::Message
 
       attr_accessor :data
@@ -179,7 +179,10 @@ Example
     end
 
     # my_lib/my_overloaded_command.rb
-    class MyOverloadedCommand < Serf::Command
+    class MyOverloadedCommand
+      include Serf::Command
+
+      self.request_factory = MyMessage
 
       def initialize(*args)
         super
@@ -205,11 +208,6 @@ Example
         "MyOverloadedCommand: #{opts(:name,'notnamed')}, #{request.to_json}"
       end
 
-      protected
-
-      def request_parser
-        MyMessage
-      end
     end
 
     # Create a new builder for this serf app.
@@ -236,7 +234,7 @@ Example
       match 'other_message'
       run MyOverloadedCommand, name: 'foreground_other_message'
 
-      runner :eventmachine
+      runner :event_machine
 
       # This message kind is handled by multiple handlers.
       match 'other_message'

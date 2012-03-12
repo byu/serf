@@ -2,7 +2,7 @@ require 'girl_friday'
 
 require 'serf/messages/message_accepted_event'
 require 'serf/runners/helper'
-require 'serf/util/with_error_handling'
+require 'serf/util/error_handling'
 
 module Serf
 module Runners
@@ -10,7 +10,7 @@ module Runners
   ##
   #
   class GirlFriday
-    include Serf::Util::WithErrorHandling
+    include Serf::Util::ErrorHandling
     include Serf::Runners::Helper
 
     def initialize(*args)

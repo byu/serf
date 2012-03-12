@@ -1,4 +1,4 @@
-require 'serf/util/with_options_extraction'
+require 'serf/util/options_extraction'
 
 module Serf
 module Routing
@@ -12,7 +12,7 @@ module Routing
   # and given block.
   #
   class Endpoint
-    include Serf::Util::WithOptionsExtraction
+    include Serf::Util::OptionsExtraction
 
     def initialize(connect, handler_factory, *args, &block)
       # If we want to connect serf options, then we try to extract

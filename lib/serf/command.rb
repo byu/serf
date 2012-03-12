@@ -1,7 +1,7 @@
 require 'active_support/concern'
 require 'active_support/core_ext/class/attribute'
 
-require 'serf/util/with_options_extraction'
+require 'serf/util/options_extraction'
 
 module Serf
 
@@ -33,7 +33,7 @@ module Serf
   #
   module Command
     extend ActiveSupport::Concern
-    include Serf::Util::WithOptionsExtraction
+    include Serf::Util::OptionsExtraction
 
     included do
       class_attribute :request_factory

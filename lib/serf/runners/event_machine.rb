@@ -2,7 +2,7 @@ require 'eventmachine'
 
 require 'serf/messages/message_accepted_event'
 require 'serf/runners/direct'
-require 'serf/util/with_error_handling'
+require 'serf/util/error_handling'
 
 module Serf
 module Runners
@@ -24,7 +24,7 @@ module Runners
   # been the cause of the error.
   #
   class EventMachine
-    include Serf::Util::WithErrorHandling
+    include Serf::Util::ErrorHandling
 
     def initialize(*args)
       extract_options! args

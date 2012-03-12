@@ -6,7 +6,7 @@ module Util
   # to initializers.
   #
   #   class Example
-  #     include Serf::Util::WithOptionsExtraction
+  #     include Serf::Util::OptionsExtraction
   #
   #     def initialize(*args, &block)
   #       extract_options! args
@@ -23,7 +23,7 @@ module Util
   #   example.do_work
   #   # => 'Another Value'
   #
-  module WithOptionsExtraction
+  module OptionsExtraction
 
     ##
     # Reader method for the options hash.

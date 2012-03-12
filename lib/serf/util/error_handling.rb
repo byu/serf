@@ -2,7 +2,7 @@ require 'active_support/core_ext/string/inflections'
 
 require 'serf/messages/caught_exception_event'
 require 'serf/util/null_object'
-require 'serf/util/with_options_extraction'
+require 'serf/util/options_extraction'
 
 module Serf
 module Util
@@ -11,8 +11,8 @@ module Util
   # Helper module to rescues exceptions from executing blocks of
   # code, and then logs+pushes the error event.
   #
-  module WithErrorHandling
-    include ::Serf::Util::WithOptionsExtraction
+  module ErrorHandling
+    include ::Serf::Util::OptionsExtraction
 
     ##
     # A block wrapper to handle errors when executing a block.

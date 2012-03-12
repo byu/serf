@@ -3,7 +3,7 @@ require 'serf/routing/registry'
 require 'serf/runners/direct'
 require 'serf/serfer'
 require 'serf/util/null_object'
-require 'serf/util/with_options_extraction'
+require 'serf/util/options_extraction'
 
 module Serf
 
@@ -23,7 +23,7 @@ module Serf
   #   builder.to_app
   #
   class Builder
-    include Serf::Util::WithOptionsExtraction
+    include Serf::Util::OptionsExtraction
 
     def self.parse_file(config)
       cfgfile = ::File.read(config)
@@ -188,7 +188,7 @@ module Serf
           # Serf infrastructure options to pass to 'connected' Endpoints
           # to build a handler instance for each env hash received.
           serf_options: serf_options,
-          # Options to use by serfer because it includes WithErrorHandling.
+          # Options to use by serfer because it includes ErrorHandling.
           error_channel: @error_channel,
           logger: @logger)
       end

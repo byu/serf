@@ -1,12 +1,12 @@
 require 'active_support/core_ext/hash/keys'
 
 require 'serf/error'
-require 'serf/util/with_error_handling'
+require 'serf/util/error_handling'
 
 module Serf
 
   class Serfer
-    include ::Serf::Util::WithErrorHandling
+    include ::Serf::Util::ErrorHandling
 
     def initialize(*args)
       extract_options! args
