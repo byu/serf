@@ -109,8 +109,203 @@ aware that:
     hash that is to be parsed into a message object.
 
 
-Example
-=======
+Example With GirlFriday
+=======================
+
+    # Require our libraries
+    require 'log4r'
+    require 'json'
+
+    require 'serf/builder'
+    require 'serf/command'
+    require 'serf/message'
+    require 'serf/middleware/uuid_tagger'
+    require 'serf/util/options_extraction'
+
+    # create a simple logger for this example
+    outputter = Log4r::FileOutputter.new(
+      'fileOutputter',
+      filename: 'log.txt')
+    ['tick',
+      'serf',
+      'hndl',
+      'resp',
+      'errr'].each do |name|
+      logger = Log4r::Logger.new name
+      logger.outputters = outputter
+    end
+
+    # Helper class for this example to receive result or error messages
+    # and pipe it into our logger.
+    class MyChannel
+      def initialize(logger, error=false)
+        @logger = logger
+        @error = error
+      end
+      def push(message)
+        if @error
+          @logger.fatal "#{message}"
+        else
+          @logger.debug "#{message}"
+        end
+      end
+    end
+
+    # my_lib/my_message.rb
+    # This class is stripped down minimal functionality that
+    # ActiveModel or Aequitas/Virtus implements.
+    class MyMessage
+      include Serf::Util::OptionsExtraction
+      include Serf::Message
+
+      attr_accessor :data
+
+      def initialize(*args)
+        extract_options! args
+        self.data = opts :data
+      end
+
+      def attributes
+        { 'data' => data }
+      end
+
+      def valid?
+        !data.nil?
+      end
+
+      def full_error_messages
+        'Data is blank' if data.nil?
+      end
+    end
+
+    # my_lib/my_overloaded_command.rb
+    class MyOverloadedCommand
+      include Serf::Command
+
+      self.request_factory = MyMessage
+
+      def initialize(*args)
+        super
+        raise "Constructor Error: #{opts(:name)}" if opts :raises_in_new
+      end
+
+      def call
+        # Set our logger
+        logger = ::Log4r::Logger['hndl']
+
+        # Just our name to sort things out
+        name = opts! :name
+        logger.info "#{name}: #{request.to_json}"
+
+        raise "Forcing Error in #{name}" if opts(:raises, false)
+
+        # Do work Here...
+        # And return 0 or more messages as result. Nil is valid response.
+        return { kind: "#{name}_result", input: request.to_hash }
+      end
+
+      def inspect
+        "MyOverloadedCommand: #{opts(:name,'notnamed')}, #{request.to_json}"
+      end
+
+    end
+
+    # Create a new builder for this serf app.
+    builder = Serf::Builder.new do
+      # Include some middleware
+      use Serf::Middleware::UuidTagger
+
+      # Create response and error channels for the handler result messages.
+      response_channel MyChannel.new(::Log4r::Logger['resp'])
+      error_channel MyChannel.new(::Log4r::Logger['errr'], true)
+
+      # We pass in a logger to our Serf code: Serfer and Runners.
+      logger ::Log4r::Logger['serf']
+
+      runner :direct
+
+      match 'my_message'
+      run MyOverloadedCommand, name: 'my_message_command'
+
+      match 'raise_error_message'
+      run MyOverloadedCommand, name: 'foreground_raises_error', raises: true
+      run MyOverloadedCommand, name: 'constructor_error', raises_in_new: true
+
+      match 'other_message'
+      run MyOverloadedCommand, name: 'foreground_other_message'
+
+      runner :girl_friday
+
+      # This message kind is handled by multiple handlers.
+      match 'other_message'
+      run MyOverloadedCommand, name: 'background_other_message'
+      run MyOverloadedCommand, name: 'background_raises error', raises: true
+
+      match /^events\/.*$/
+      run MyOverloadedCommand, name: 'regexp_matched_command'
+
+      # Optionally define a not found handler...
+      # Defaults to raising an ArgumentError, 'Not Found'.
+      #not_found lambda {|x| puts x}
+    end
+    app = builder.to_app
+
+    # Start event machine loop.
+    logger = ::Log4r::Logger['tick']
+
+    logger.info "Start Tick #{Thread.current.object_id}"
+
+    # This will submit a 'my_message' message (as a hash) to the Serf App.
+    # NOTE: We should get an error message pushed to the error channel
+    #  because no 'data' field was put in my_message as required
+    #  And the Result should have a CaughtExceptionEvent.
+    logger.info "BEG MyMessage w/o Data"
+    results = app.call 'kind' => 'my_message'
+    logger.info "END MyMessage w/o Data: #{results.size} #{results.to_json}"
+
+    # Here is good result
+    logger.info "BEG MyMessage w/ Data"
+    results = app.call 'kind' => 'my_message', 'data' => '1'
+    logger.info "END MyMessage w/ Data: #{results.size} #{results.to_json}"
+
+    # Here is a result that will raise an error in foreground
+    # We should get two event messages in the results because we
+    # mounted two commands to the raise_error_message kind.
+    # Each shows errors being raised in two separate stages.
+    # 1. Error in creating the instance of the command.
+    # 2. Error when the command was executed by the foreground runner.
+    logger.info "BEG RaisesErrorMessage"
+    results = app.call 'kind' => 'raise_error_message', 'data' => '2'
+    logger.info "END RaisesErrorMessage: #{results.size} #{results.to_json}"
+
+    # This submission will be executed by THREE commands.
+    #   One in the foreground, two in the background.
+    #
+    # The foreground results should be:
+    # * MessageAcceptedEvent
+    # * And return result of one command call
+    #
+    # The error channel should output an error from one background command.
+    logger.info "BEG OtherMessage"
+    results = app.call 'kind' => 'other_message', 'data' => '3'
+    logger.info "END OtherMessage: #{results.size} #{results.to_json}"
+
+    # This will match a regexp call
+    logger.info "BEG Regexp"
+    results = app.call 'kind' => 'events/my_event', 'data' => '4'
+    logger.info "END Regexp Results: #{results.size} #{results.to_json}"
+
+    begin
+      # Here, we're going to submit a message that we don't handle.
+      # By default, an exception will be raised.
+      app.call 'kind' => 'unhandled_message_kind'
+    rescue => e
+      logger.warn "Caught in Tick: #{e.inspect}"
+    end
+    logger.info "End Tick #{Thread.current.object_id}"
+
+Example With EventMachine
+=========================
 
     # Require our libraries
     require 'log4r'
