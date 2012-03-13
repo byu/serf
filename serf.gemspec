@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "serf"
-  s.version = "0.6.1"
+  s.version = "0.7.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Benjamin Yu"]
-  s.date = "2012-02-09"
+  s.date = "2012-03-13"
   s.description = "Event-Driven SOA with CQRS"
   s.email = "benjaminlyu@gmail.com"
   s.extra_rdoc_files = [
@@ -25,22 +25,27 @@ Gem::Specification.new do |s|
     "NOTICE.txt",
     "README.md",
     "Rakefile",
+    "docs/thread_pools.txt",
     "lib/serf.rb",
     "lib/serf/builder.rb",
+    "lib/serf/command.rb",
     "lib/serf/error.rb",
     "lib/serf/message.rb",
     "lib/serf/messages/caught_exception_event.rb",
     "lib/serf/messages/message_accepted_event.rb",
     "lib/serf/middleware/uuid_tagger.rb",
-    "lib/serf/runners/direct_runner.rb",
-    "lib/serf/runners/em_runner.rb",
+    "lib/serf/routing/endpoint.rb",
+    "lib/serf/routing/registry.rb",
+    "lib/serf/runners/direct.rb",
+    "lib/serf/runners/event_machine.rb",
+    "lib/serf/runners/girl_friday.rb",
+    "lib/serf/runners/helper.rb",
     "lib/serf/serfer.rb",
+    "lib/serf/util/error_handling.rb",
     "lib/serf/util/null_object.rb",
+    "lib/serf/util/options_extraction.rb",
     "lib/serf/util/regexp_matcher.rb",
-    "lib/serf/util/route_endpoint.rb",
-    "lib/serf/util/route_set.rb",
     "lib/serf/util/uuidable.rb",
-    "lib/serf/util/with_error_handling.rb",
     "lib/serf/version.rb",
     "serf.gemspec",
     "spec/serf_spec.rb",
@@ -49,7 +54,7 @@ Gem::Specification.new do |s|
   s.homepage = "http://github.com/byu/serf"
   s.licenses = ["Apache 2.0"]
   s.require_paths = ["lib"]
-  s.rubygems_version = "1.8.15"
+  s.rubygems_version = "1.8.17"
   s.summary = "Event-Driven SOA with CQRS"
 
   if s.respond_to? :specification_version then
@@ -59,36 +64,42 @@ Gem::Specification.new do |s|
       s.add_runtime_dependency(%q<activesupport>, [">= 3.2.0"])
       s.add_runtime_dependency(%q<i18n>, [">= 0.6.0"])
       s.add_runtime_dependency(%q<uuidtools>, [">= 2.1.2"])
-      s.add_development_dependency(%q<rspec>, ["~> 2.3.0"])
-      s.add_development_dependency(%q<yard>, ["~> 0.6.0"])
-      s.add_development_dependency(%q<bundler>, ["~> 1.0.0"])
-      s.add_development_dependency(%q<jeweler>, ["~> 1.6.4"])
+      s.add_development_dependency(%q<rspec>, ["~> 2.8.0"])
+      s.add_development_dependency(%q<yard>, ["~> 0.7.5"])
+      s.add_development_dependency(%q<bundler>, ["~> 1.0.22"])
+      s.add_development_dependency(%q<jeweler>, ["~> 1.8.3"])
       s.add_development_dependency(%q<simplecov>, [">= 0"])
+      s.add_development_dependency(%q<log4r>, ["~> 1.1.10"])
       s.add_development_dependency(%q<msgpack>, [">= 0.4.6"])
       s.add_development_dependency(%q<eventmachine>, [">= 0.12.10"])
+      s.add_development_dependency(%q<girl_friday>, ["~> 0.9.7"])
     else
       s.add_dependency(%q<activesupport>, [">= 3.2.0"])
       s.add_dependency(%q<i18n>, [">= 0.6.0"])
       s.add_dependency(%q<uuidtools>, [">= 2.1.2"])
-      s.add_dependency(%q<rspec>, ["~> 2.3.0"])
-      s.add_dependency(%q<yard>, ["~> 0.6.0"])
-      s.add_dependency(%q<bundler>, ["~> 1.0.0"])
-      s.add_dependency(%q<jeweler>, ["~> 1.6.4"])
+      s.add_dependency(%q<rspec>, ["~> 2.8.0"])
+      s.add_dependency(%q<yard>, ["~> 0.7.5"])
+      s.add_dependency(%q<bundler>, ["~> 1.0.22"])
+      s.add_dependency(%q<jeweler>, ["~> 1.8.3"])
       s.add_dependency(%q<simplecov>, [">= 0"])
+      s.add_dependency(%q<log4r>, ["~> 1.1.10"])
       s.add_dependency(%q<msgpack>, [">= 0.4.6"])
       s.add_dependency(%q<eventmachine>, [">= 0.12.10"])
+      s.add_dependency(%q<girl_friday>, ["~> 0.9.7"])
     end
   else
     s.add_dependency(%q<activesupport>, [">= 3.2.0"])
     s.add_dependency(%q<i18n>, [">= 0.6.0"])
     s.add_dependency(%q<uuidtools>, [">= 2.1.2"])
-    s.add_dependency(%q<rspec>, ["~> 2.3.0"])
-    s.add_dependency(%q<yard>, ["~> 0.6.0"])
-    s.add_dependency(%q<bundler>, ["~> 1.0.0"])
-    s.add_dependency(%q<jeweler>, ["~> 1.6.4"])
+    s.add_dependency(%q<rspec>, ["~> 2.8.0"])
+    s.add_dependency(%q<yard>, ["~> 0.7.5"])
+    s.add_dependency(%q<bundler>, ["~> 1.0.22"])
+    s.add_dependency(%q<jeweler>, ["~> 1.8.3"])
     s.add_dependency(%q<simplecov>, [">= 0"])
+    s.add_dependency(%q<log4r>, ["~> 1.1.10"])
     s.add_dependency(%q<msgpack>, [">= 0.4.6"])
     s.add_dependency(%q<eventmachine>, [">= 0.12.10"])
+    s.add_dependency(%q<girl_friday>, ["~> 0.9.7"])
   end
 end
 
