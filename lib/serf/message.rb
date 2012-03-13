@@ -15,6 +15,8 @@ module Serf
     included do
       class_attribute :kind
       send 'kind=', self.to_s.tableize.singularize
+      class_attribute :model_name
+      send 'model_name=', self.to_s
     end
 
     def kind
@@ -33,10 +35,22 @@ module Serf
       to_hash.to_json *args
     end
 
+    def model
+      self.class
+    end
+
+    def full_error_messages
+      errors.full_messages.join '. '
+    end
+
     module ClassMethods
 
-      def parse(*args)
-        self.new *args
+      def parse(*args, &block)
+        self.new *args, &block
+      end
+
+      def build(*args, &block)
+        self.new *args, &block
       end
 
     end

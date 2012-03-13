@@ -1,14 +1,15 @@
+require 'serf/routing/endpoint'
+require 'serf/routing/registry'
+require 'serf/runners/direct'
 require 'serf/serfer'
-require 'serf/runners/direct_runner'
-require 'serf/runners/em_runner'
 require 'serf/util/null_object'
-require 'serf/util/route_set'
+require 'serf/util/options_extraction'
 
 module Serf
 
   ##
   # A Serf Builder that processes the SerfUp DSL to build a rack-like
-  # app to route and process received messages. This builder is
+  # app to endpoint and process received messages. This builder is
   # implemented based on code from Rack::Builder.
   #
   #   builder = Serf::Builder.parse_file 'examples/config.su'
@@ -22,6 +23,8 @@ module Serf
   #   builder.to_app
   #
   class Builder
+    include Serf::Util::OptionsExtraction
+
     def self.parse_file(config)
       cfgfile = ::File.read(config)
       builder = eval "::Serf::Builder.new {\n" + cfgfile + "\n}",
@@ -29,32 +32,26 @@ module Serf
       return builder
     end
 
-    def initialize(app=nil, &block)
-      # Configuration about the routes and apps to run.
+    def initialize(*args, &block)
+      extract_options! args
+
+      # Configuration about the endpoints and apps to run.
       @use = []
-      @route_maps = []
-      @handlers = {}
-      @message_parsers = {}
-      @not_found = app || proc do
-        raise ArgumentError, 'Handler Not Found'
-      end
+      @not_found = opts :not_found, lambda { |env|
+        raise ArgumentError, 'Endpoints Not Found'
+      }
 
-      # Default option in route_configs for background is 'false'
-      @background = false
-
-      # Factories to build objects that wire our Serf App together.
-      # Note that these default implementing classes are also factories
-      # of their own objects (i.e. - define a 'build' class method).
-      @serfer_factory = ::Serf::Serfer
-      @foreground_runner_factory = ::Serf::Runners::DirectRunner
-      @background_runner_factory = ::Serf::Runners::EmRunner
-      @route_set_factory = ::Serf::Util::RouteSet
-
-      # Utility and messaging channels for our Runners
-      # NOTE: these are only used if the builder needs to instantiage runners.
-      @results_channel = ::Serf::Util::NullObject.new
+      # Utility and messaging channels that get passed as options
+      # when building our Runners and Handlers.
+      @response_channel = ::Serf::Util::NullObject.new
       @error_channel = ::Serf::Util::NullObject.new
       @logger = ::Serf::Util::NullObject.new
+
+      # Set up the starting state for our DSL calls.
+      @runner_matcher_endpoint_map = {}
+      @runner_params = {}
+      runner :direct
+      @matcher = nil
 
       # configure based on a given block.
       instance_eval(&block) if block_given?
@@ -68,126 +65,130 @@ module Serf
       @use << proc { |app| middleware.new(app, *args, &block) }
     end
 
-    def routes(route_map)
-      @route_maps << route_map
+    def not_found(app); @not_found = app; end
+
+    def response_channel(channel); @response_channel = channel; end
+    def error_channel(channel); @error_channel = channel; end
+    def logger(logger); @logger = logger; end
+
+    ##
+    # DSL Method to change our current context to use the given matcher.
+    #
+    def match(matcher); @matcher = matcher; end
+
+    ##
+    # Mount and endpoint to the current context's Runner and Matcher.
+    # Connected so the endpoint will pass serf_options to the handler's build.
+    def run(*args, &block); mount true, *args, &block; end
+
+    ##
+    # Mount and endpoint to the current context's Runner and Matcher.
+    # Unconnected so the endpoint will omit serf_options to the handler's build.
+    def run_unconnected(*args, &block); mount false, *args, &block; end
+
+    ##
+    # The generic mount method used by run & run_unconnected to create an
+    # endpoint to be associated with the current context's Runner and Matcher.
+    def mount(connected, handler_factory, *args, &block)
+      raise 'No matcher defined yet' unless @matcher
+      @runner_matcher_endpoint_map[@runner_factory] ||= {}
+      @runner_matcher_endpoint_map[@runner_factory][@matcher] ||= []
+      @runner_matcher_endpoint_map[@runner_factory][@matcher] <<
+        Serf::Routing::Endpoint.new(
+          connected,
+          handler_factory,
+          *args,
+          &block)
     end
 
-    def handler(handler_name, handler)
-      @handlers[handler_name] = handler
-    end
-
-    def message_parser(message_parser_name, message_parser)
-      @message_parsers[message_parser_name] = message_parser
-    end
-
-    def not_found(app)
-      @not_found = app
-    end
-
-    def background(run_in_background)
-      @background = run_in_background
-    end
-
-    def serfer_factory(serfer_factory)
-      @serfer_factory = serfer_factory
-    end
-
-    def foreground_runner_factory(foreground_runner_factory)
-      @foreground_runner_factory = foreground_runner_factory
-    end
-
-    def background_runner_factory(background_runner_factory)
-      @background_runner_factory = background_runner_factory
-    end
-
-    def route_set_factory(route_set_factory)
-      @route_set_factory = route_set_factory
-    end
-
-    def results_channel(results_channel)
-      @results_channel = results_channel
-    end
-
-    def error_channel(error_channel)
-      @error_channel = error_channel
-    end
-
-    def logger(logger)
-      @logger = logger
-    end
-
-    def to_app
-      bg_route_set = @route_set_factory.build
-      fg_route_set = @route_set_factory.build
-
-      @route_maps.each do |route_map|
-        route_map.each do |matcher, route_configs|
-          route_configs_iterator(route_configs).each do |route_config|
-            # If the passed in route_config was a String, then we place
-            # it in an route config as the 'target' field and leave all
-            # other options as default.
-            config = (route_config.is_a?(String) ?
-              { target: route_config } :
-              route_config)
-
-            # Get the required handler.
-            # Raises error if handler wasn't declared in config.
-            target = config.fetch :target
-            handler_name, action = handler_and_action target
-
-            # Raises error if handler wasn't registered with builder.
-            handler = @handlers.fetch handler_name
-
-            # Lookup the parser if it was defined.
-            # The Parser MAY be either an object or string.
-            # If String, then we're going to look up in parser map.
-            # Raises an error if a parser (string) was declared, but not
-            # registered with the builder.
-            parser = config[:message_parser]
-            parser = @message_parsers.fetch(parser) if parser.is_a?(String)
-
-            # We have the handler, action and parser.
-            # Now we're going to add that route to either the background
-            # or foreground route_set.
-            background = config.fetch(:background) { @background }
-            (background ? bg_route_set : fg_route_set).add_route(
-              matcher: matcher,
-              handler: handler,
-              action: action,
-              message_parser: parser)
-          end
+    ##
+    # DSL Method to change our current context to use the given runner.
+    #
+    def runner(type)
+      @runner_factory = case type
+      when :direct
+        ::Serf::Runners::Direct
+      when :event_machine
+        begin
+          require 'serf/runners/event_machine'
+          Serf::Runners::EventMachine
+        rescue NameError => e
+          e.extend Serf::Error
+          raise e
         end
+      when :girl_friday
+        begin
+          require 'serf/runners/girl_friday'
+          Serf::Runners::GirlFriday
+        rescue NameError => e
+          e.extend Serf::Error
+          raise e
+        end
+      else
+        raise 'No callable runner' unless type.respond_to? :build
+        type
       end
+    end
 
-      # Get or make our foreground runner
-      fg_runner = @foreground_runner_factory.build(
-        results_channel: @results_channel,
+    def params(*args)
+      @runner_params[@runner_factory] = args
+    end
+
+    ##
+    # Returns a hash of our current serf infrastructure options
+    # to be passed to Endpoint#build methods.
+    def serf_options
+      {
+        response_channel: @error_channel,
         error_channel: @error_channel,
-        logger: @logger)
+        logger: @logger
+      }
+    end
 
-      # Get or make our background runner
-      bg_runner = @background_runner_factory.build(
-        results_channel: @results_channel,
-        error_channel: @error_channel,
-        logger: @logger)
-
-      # We create the route_sets dependent on built routes.
-      route_sets = {}
-      if fg_route_set.size > 0
-        route_sets[fg_route_set] = fg_runner
-      end
-      if bg_route_set.size > 0
-        route_sets[bg_route_set] = bg_runner
-      end
-
+    ##
+    # Create our app.
+    #
+    def to_app
       # By default, we go to the not_found app.
       app = @not_found
 
-      # But if we have routes, then we'll build a serfer to handle it.
-      if route_sets.size > 0
-        app = @serfer_factory.build(
-          route_sets: route_sets,
+      registries = {}
+
+      # Set additional options for all the mounts
+      @runner_matcher_endpoint_map.each do |runner_factory, matcher_endpoints|
+
+        # 1. Create a registry for our given hash of matchers to endpoints.
+        # 2. Convert the hash of matcher to endpoints into a useable registry
+        #   for lookups.
+        registry = ::Serf::Routing::Registry.new
+        matcher_endpoints.each do |matcher, endpoints|
+          registry.add matcher, endpoints
+        end
+
+        # Ok, we'll create the runner and add it to our registries hash
+        # if we actually have endpoints here.
+        if registry.size > 0
+          runner_params = @runner_params[runner_factory] ?
+            @runner_params[runner_factory] :
+            []
+          runner_params << (runner_params.last.is_a?(Hash) ?
+            runner_params.pop.merge(serf_options) :
+            serf_options)
+          runner = runner_factory.build *runner_params
+          registries[runner] = registry
+        end
+      end
+
+      if registries.size > 0
+        app = Serf::Serfer.build(
+          # The registries to match, and their runners to execute.
+          registries: registries,
+          # App if no endpoints were found.
           not_found: app,
+          # Serf infrastructure options to pass to 'connected' Endpoints
+          # to build a handler instance for each env hash received.
+          serf_options: serf_options,
+          # Options to use by serfer because it includes ErrorHandling.
           error_channel: @error_channel,
           logger: @logger)
       end
@@ -197,42 +198,5 @@ module Serf
 
       return app
     end
-
-    private
-
-    ##
-    # This handles route_configs that are Array, Hash or String.
-    # We want to create a proper iterator to run over the route_configs.
-    def route_configs_iterator(route_configs)
-      case route_configs
-      when String
-        return Array(route_configs)
-      when Hash
-        return [route_configs]
-      else
-        return route_configs
-      end
-    end
-
-    ##
-    # Extracts the handler_name and action from the 'target' using
-    # the shortcut convention similar to Rails routing.
-    #
-    #   'my_handler#my_method' => # my_method action.
-    #   'my_handler#' => # action defaults to 'call' method.
-    #   'my_handler'  => # action defaults to 'call' method.
-    #   '#my_method'  => # some registered handler name with empty string.
-    #
-    # @param [String] target the handler and action description.
-    # @return the splat handler and action.
-    #
-    def handler_and_action(target)
-      handler, action = target.split '#', 2
-      handler = handler.to_s.strip
-      action = action.to_s.strip
-      action = :call if action.size == 0
-      return handler, action
-    end
   end
-
 end
