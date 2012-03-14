@@ -60,11 +60,11 @@ module Runners
     # queue.
     #
     def perform(task)
-      with_error_handling(task[:context]) do
+      ok, run_result = with_error_handling(task[:context]) do
         task[:handler].call
-        run_result = run_result.is_a?(Hash) ? [run_result] : Array(run_result)
-        push_results run_result
       end
+      run_result = run_result.is_a?(Hash) ? [run_result] : Array(run_result)
+      push_results run_result if ok
     end
 
   end
