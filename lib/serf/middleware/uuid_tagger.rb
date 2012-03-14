@@ -1,4 +1,4 @@
-require 'uuidtools'
+require 'serf/util/uuidable'
 
 module Serf
 module Middleware
@@ -9,6 +9,7 @@ module Middleware
   # if the incoming request already has it.
   #
   class UuidTagger
+    include Serf::Util::Uuidable
 
     ##
     # @param app the app
@@ -16,12 +17,14 @@ module Middleware
     #
     def initialize(app, options={})
       @app = app
-      @field = options.fetch(:field) { 'serf.request_uuid' }
+      @field = options.fetch(:field) { 'uuid' }
     end
 
     def call(env)
       env = env.dup
-      env[@field] ||= UUIDTools::UUID.random_create.to_s
+      unless env[@field.to_sym] || env[@field.to_s]
+        env[@field] = create_coded_uuid
+      end
       @app.call env
     end
 
