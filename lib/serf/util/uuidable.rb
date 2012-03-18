@@ -13,7 +13,9 @@ module Util
   module Uuidable
 
     ##
-    # Creates a Random UUID, base64 encoded.
+    # Creates a Timestamp UUID, base64 encoded.
+    #
+    # NOTE: UUIDTools TimeStamp code creates a UTC based timestamp UUID.
     #
     def create_coded_uuid
       # All raw UUIDs are 16 bytes long. Base64 lengthens the string to
@@ -22,7 +24,7 @@ module Util
       # of an extra 6 bytes over raw UUID, but with the readability
       # benefit. And saves us 14 bytes of size from the 'standard'
       # string hex representation of UUIDs.
-      Base64.urlsafe_encode64(UUIDTools::UUID.random_create.raw).chomp('==')
+      Base64.urlsafe_encode64(UUIDTools::UUID.timestamp_create.raw).chomp('==')
     end
 
     ##
