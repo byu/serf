@@ -73,7 +73,7 @@ module Serf
         # Now we allocate the object, and do some options extraction that may
         # modify the args array by popping off the last element if it is a hash.
         obj = allocate
-        obj.send :__send__, :extract_options!, args
+        obj.__send__ :extract_options!, args
 
         # If the request was a hash, we MAY be able to convert it into a
         # request object. We only do this if a request_factory was set either
@@ -92,7 +92,7 @@ module Serf
         obj.validate_request!
 
         # Finalize the object's construction with the rest of the args & block.
-        obj.send :__send__, :initialize, *args, &block
+        obj.__send__ :initialize, *args, &block
 
         return obj
       end
