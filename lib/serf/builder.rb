@@ -139,7 +139,7 @@ module Serf
     # to be passed to Endpoint#build methods.
     def serf_options
       {
-        response_channel: @error_channel,
+        response_channel: @response_channel,
         error_channel: @error_channel,
         logger: @logger
       }

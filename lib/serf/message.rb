@@ -19,10 +19,6 @@ module Serf
       send 'model_name=', self.to_s
     end
 
-    def kind
-      self.class.kind
-    end
-
     def to_hash
       attributes.merge kind: kind
     end

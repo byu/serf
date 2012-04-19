@@ -11,8 +11,8 @@ module Messages
   # than any errors given.
   #
   class MessageAcceptedEvent
-    include ::Serf::Message
-    include ::Serf::Util::Uuidable
+    include Serf::Message
+    include Serf::Util::Uuidable
 
     attr_accessor :message
 
@@ -24,7 +24,7 @@ module Messages
     def attributes
       {
         'message' => @message,
-        'uuid' => uuid
+        'uuid' => (@uuid || create_coded_uuid)
       }
     end
 

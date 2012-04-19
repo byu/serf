@@ -13,8 +13,8 @@ module Messages
   # error channel for out of band processing/notification.
   #
   class CaughtExceptionEvent
-    include ::Serf::Message
-    include ::Serf::Util::Uuidable
+    include Serf::Message
+    include Serf::Util::Uuidable
 
     attr_accessor :context
     attr_accessor :error
@@ -35,7 +35,7 @@ module Messages
         'error' => @error,
         'message' => @message,
         'backtrace' => @backtrace,
-        'uuid' => uuid
+        'uuid' => (@uuid || create_coded_uuid)
       }
     end
 
