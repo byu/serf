@@ -45,7 +45,7 @@ module Util
       error_channel = opts :error_channel, ::Serf::Util::NullObject.new
       error_event = eec.new(
         context: context,
-        error: e.class.to_s.tableize,
+        error: e.class.to_s.underscore,
         message: e.message,
         backtrace: e.backtrace.join("\n"))
 

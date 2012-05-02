@@ -95,7 +95,7 @@ Users of the Serf::Message module need to be aware of that:
   to be used to deserialize the ENV for a handler action method.
 3. Messages MAY override `Message#kind` instance method or `Message.kind`
   class method to specify a message `kind` that is different than
-  the tableized name of the implementing ruby class.
+  the underscored name of the implementing ruby class.
 4. Messages MAY override `Message#to_msgpack`, `Message#to_json`, or
   `Message#to_hash` to get alternate serialization.
 

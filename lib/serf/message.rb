@@ -14,7 +14,7 @@ module Serf
 
     included do
       class_attribute :kind
-      send 'kind=', self.to_s.tableize.singularize
+      send 'kind=', self.to_s.underscore
       class_attribute :model_name
       send 'model_name=', self.to_s
     end
