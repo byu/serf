@@ -1,6 +1,7 @@
 require 'active_support/concern'
 require 'active_support/core_ext/class/attribute'
 
+require 'serf/util/mash_factory'
 require 'serf/util/options_extraction'
 
 module Serf
@@ -13,6 +14,10 @@ module Serf
   #
   #     # Set a default Message Parser for the class.
   #     self.request_factory = MySerfRequestMessage
+  #
+  #     # Validate the request, like using JSON-Schema for hash
+  #     # (or Hashie's Mash) requests.
+  #     self.request_validator = MySerfRequestValidator
   #
   #     def initialize(*args, &block)
   #       # Do some validation here, or extra parameter setting with the args
@@ -37,6 +42,8 @@ module Serf
 
     included do
       class_attribute :request_factory
+      __send__ 'request_factory=', Serf::Util::MashFactory
+      class_attribute :request_validator
       attr_reader :request
     end
 
@@ -45,11 +52,7 @@ module Serf
     end
 
     def validate_request!
-      # We must verify that the request is valid, but only if the
-      # request object isn't a hash.
-      unless request.is_a?(Hash) || request.valid?
-        raise ArgumentError, request.full_error_messages
-      end
+      request_validator.validate! request if request_validator
     end
 
     module ClassMethods
@@ -86,13 +89,13 @@ module Serf
         # Set the request instance variable to whatever type of request we got.
         obj.instance_variable_set :@request, request
 
+        # Finalize the object's construction with the rest of the args & block.
+        obj.__send__ :initialize, *args, &block
+
         # Now validate that the request is ok.
         # Implementing classes MAY override this method to do different
         # kind of request validation.
         obj.validate_request!
-
-        # Finalize the object's construction with the rest of the args & block.
-        obj.__send__ :initialize, *args, &block
 
         return obj
       end

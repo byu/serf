@@ -9,7 +9,6 @@ module Middleware
   # if the incoming request already has it.
   #
   class UuidTagger
-    include Serf::Util::Uuidable
 
     ##
     # @param app the app
@@ -23,7 +22,7 @@ module Middleware
     def call(env)
       env = env.dup
       unless env[@field.to_sym] || env[@field.to_s]
-        env[@field] = create_coded_uuid
+        env[@field] = Serf::Util::Uuidable.create_coded_uuid
       end
       @app.call env
     end

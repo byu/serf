@@ -39,12 +39,6 @@ module More
       return results
     end
 
-    # Overriding the Serf::Command validate_request! so it doesn't
-    # call #valid? on the request object. This is because the incoming
-    # request is another Command object itself.
-    def validate_request!
-    end
-
   end
 
 end

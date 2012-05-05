@@ -1,6 +1,5 @@
 require 'active_support/core_ext/string/inflections'
 
-require 'serf/messages/caught_exception_event'
 require 'serf/util/null_object'
 require 'serf/util/options_extraction'
 require 'serf/util/protected_call'
@@ -14,7 +13,6 @@ module Util
   #
   # Including classes may have the following instance variables
   # to override the default values:
-  # * @error_event_class - ::Serf::Messages::CaughtExceptionEvent
   # * @logger - ::Serf::Util::NullObject.new
   # * @error_channel - ::Serf::Util::NullObject.new
   module ErrorHandling
@@ -40,14 +38,15 @@ module Util
     # log the exception itself to the logger.
     #
     def handle_error(e, context=nil)
-      eec = opts :error_event_class, ::Serf::Messages::CaughtExceptionEvent
       logger = opts :logger, ::Serf::Util::NullObject.new
       error_channel = opts :error_channel, ::Serf::Util::NullObject.new
-      error_event = eec.new(
+      error_event = {
+        kind: 'serf/messages/caught_exception_event',
         context: context,
         error: e.class.to_s.underscore,
         message: e.message,
-        backtrace: e.backtrace.join("\n"))
+        backtrace: e.backtrace.join("\n")
+      }
 
       # log the error to our logger
       logger.error e

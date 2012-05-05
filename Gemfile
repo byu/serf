@@ -6,6 +6,7 @@ source 'http://rubygems.org'
 # Requirements for both clients and servers.
 gem 'activesupport', '>= 3.2.0'
 gem 'i18n', '>= 0.6.0' # For ActiveSupport
+gem 'hashie'
 # Used by Serf::Messages::*
 gem 'uuidtools', '>= 2.1.2'
 
@@ -14,12 +15,12 @@ gem 'uuidtools', '>= 2.1.2'
 group :development, :test do
   gem "rspec", "~> 2.8.0"
   gem "yard", "~> 0.7.5"
-  gem "bundler", "~> 1.0.22"
+  gem "bundler", "~> 1.1.3"
   gem "jeweler", "~> 1.8.3"
   gem 'simplecov', '>= 0'
 
   # For our testing
-  gem 'log4r', '~> 1.1.10'
+  gem 'log4r', '>= 1.1.10'
 
   # Soft Dependencies
   #gem 'log4r', '~> 1.1.9'
@@ -30,5 +31,5 @@ group :development, :test do
 
   # EventMachine is now optional runner
   gem 'eventmachine', '>= 0.12.10'
-  gem 'girl_friday', '~> 0.9.7'
+  gem 'girl_friday', '>= 0.9.7'
 end
