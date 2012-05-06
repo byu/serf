@@ -1,0 +1,14 @@
+{
+  "description": "Message Kind: serf/messages/message_accepted_event",
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "object",
+      "required": true
+    },
+    "uuid": {
+      "type": "string",
+      "required": true
+    }
+  }
+}
