@@ -1,6 +1,5 @@
 require 'eventmachine'
 
-require 'serf/messages/message_accepted_event'
 require 'serf/runners/direct'
 require 'serf/util/error_handling'
 
@@ -32,10 +31,6 @@ module Runners
       # Manditory: Need a runner because this class is just a wrapper.
       @runner = opts! :runner
 
-      @mae_class = opts(
-        :message_accepted_event_class,
-        ::Serf::Messages::MessageAcceptedEvent)
-
       @evm = opts :event_machine, ::EventMachine
       @logger = opts :logger, ::Serf::Util::NullObject.new
     end
@@ -54,7 +49,10 @@ module Runners
           end
         end)
       end
-      return @mae_class.new(message: context)
+      return {
+        kind: 'serf/messages/message_accepted_event',
+        message: context
+      }
     end
 
     def self.build(options={})

@@ -21,7 +21,7 @@ Messages are the representation of data, documents, etc that are
 marshalled from client to service, which represents the business
 level interaction of the service.
 
-Messages may be commands that a service must handle.
+Messages may be command requests that a service must handle.
 Messages may be events that a service emits.
 Messages may be documents that represent state or business data.
 
@@ -59,54 +59,23 @@ Not implemented as yet:
 Service Libraries
 =================
 
-1. Service Libraries SHOULD implement message classes that include the
-  ::Serf::Message helper module.
-  a. Barring that, they should conform to the idea that messages may be
-    hashes that define at least one attribute: 'kind'.
+1. Service Libraries SHOULD implement messages as just hashes with
+  defined schemas (JSON Schema).
+  a. Required by all messages is the 'kind' field.
+  b. By default, Serf Commands will read in hashes and turn them into
+    more convenient Hashie::Mash objects.
 2. Serialization of the messages SHOULD BE Json or MessagePack (I hate XML).
-  a. `to_hash` is also included.
+  a. Serf Builder will create Serf Apps that expect a HASH ENV as input
 3. Handlers MUST implement the 'build' class method, which
   MUST receive the ENV Hash as the first parameter, followed by supplemental
   arguments as declared in the DSL.
 4. Handler methods SHOULD return zero or more messages.
   a. Raised errors are caught and pushed to error channels.
+  b. Returned messages MUST be Hash based objects for Serialization.
 5. Handler methods SHOULD handle catch their business logic exceptions and
   return them as specialized messages that can be forwarded down error channels.
   Uncaught exceptions that are then caught by Serf are pushed as
-  generic Serf::CaughtExceptionEvents, and are harder to deal with.
-
-
-Serf::Message
--------------
-
-Users of the Serf::Message module need to be aware of that:
-
-1. Messages MUST implement the `#attributes` method to use the
-  default implementations of `to_msgpack`, `to_json`, and `to_hash`.
-2. Messages MAY implement validation helpers (e.g. ActiveModel or
-  Virtus + Aequitas (DataMapper)). This is purely to be helpful for
-  receivers (Serf::Handlers) to validate the Messages before running
-  code against its data. The Serf infrastructure code does not
-  validate the Messages; it is the job of the handler code.
-3. Messages MAY override `Message.parse` class method if they want
-  different parsing (Message object instantiation) than
-  `message_class.new *args`. This parse method is called in
-  Serf::Handler when the handler class has defined a Message class
-  to be used to deserialize the ENV for a handler action method.
-3. Messages MAY override `Message#kind` instance method or `Message.kind`
-  class method to specify a message `kind` that is different than
-  the tableized name of the implementing ruby class.
-4. Messages MAY override `Message#to_msgpack`, `Message#to_json`, or
-  `Message#to_hash` to get alternate serialization.
-
-User that opt to roll their own Message class only need to be
-aware that:
-
-1. Message classes MUST implement `Message.parse(env={})` class method
-  if said message class is to be used as the target object representation
-  of a received message (from ENV hash).
-    a. Serf code makes this assumption when it finds an ENV
-    hash that is to be parsed into a message object.
+  generic CaughtExceptionEvents, and are harder to deal with.
 
 
 Example With GirlFriday
@@ -118,7 +87,6 @@ Example With GirlFriday
 
     require 'serf/builder'
     require 'serf/command'
-    require 'serf/message'
     require 'serf/middleware/uuid_tagger'
     require 'serf/util/options_extraction'
 
@@ -151,38 +119,20 @@ Example With GirlFriday
       end
     end
 
-    # my_lib/my_message.rb
-    # This class is stripped down minimal functionality that
-    # ActiveModel or Aequitas/Virtus implements.
-    class MyMessage
-      include Serf::Util::OptionsExtraction
-      include Serf::Message
+    # my_lib/my_validator.rb
+    class MyValidator
 
-      attr_accessor :data
-
-      def initialize(*args)
-        extract_options! args
-        self.data = opts :data
+      def self.validate!(data)
+        raise 'Data is nil' if data[:data].nil?
       end
 
-      def attributes
-        { 'data' => data }
-      end
-
-      def valid?
-        !data.nil?
-      end
-
-      def full_error_messages
-        'Data is blank' if data.nil?
-      end
     end
 
     # my_lib/my_overloaded_command.rb
     class MyOverloadedCommand
       include Serf::Command
 
-      self.request_factory = MyMessage
+      self.request_validator = MyValidator
 
       def initialize(*args)
         super
@@ -304,6 +254,7 @@ Example With GirlFriday
     end
     logger.info "End Tick #{Thread.current.object_id}"
 
+
 Example With EventMachine
 =========================
 
@@ -313,7 +264,6 @@ Example With EventMachine
 
     require 'serf/builder'
     require 'serf/command'
-    require 'serf/message'
     require 'serf/middleware/uuid_tagger'
     require 'serf/util/options_extraction'
 
@@ -347,37 +297,19 @@ Example With EventMachine
     end
 
     # my_lib/my_message.rb
-    # This class is stripped down minimal functionality that
-    # ActiveModel or Aequitas/Virtus implements.
-    class MyMessage
-      include Serf::Util::OptionsExtraction
-      include Serf::Message
+    class MyValidator
 
-      attr_accessor :data
-
-      def initialize(*args)
-        extract_options! args
-        self.data = opts :data
+      def self.validate!(data)
+        raise 'Data Missing Error' if data[:data].nil?
       end
 
-      def attributes
-        { 'data' => data }
-      end
-
-      def valid?
-        !data.nil?
-      end
-
-      def full_error_messages
-        'Data is blank' if data.nil?
-      end
     end
 
     # my_lib/my_overloaded_command.rb
     class MyOverloadedCommand
       include Serf::Command
 
-      self.request_factory = MyMessage
+      self.request_validator = MyValidator
 
       def initialize(*args)
         super
@@ -505,6 +437,7 @@ Example With EventMachine
         EM.stop
       end
     end
+
 
 Contributing to serf
 ====================

@@ -17,7 +17,7 @@ module Util
     #
     # NOTE: UUIDTools TimeStamp code creates a UTC based timestamp UUID.
     #
-    def create_coded_uuid
+    def self.create_coded_uuid
       # All raw UUIDs are 16 bytes long. Base64 lengthens the string to
       # 24 bytes long. We chomp off the last two equal signs '==' to
       # trim the string length to 22 bytes. This gives us an overhead
@@ -30,8 +30,33 @@ module Util
     ##
     # @param coded_uuid a coded uuid to parse.
     #
-    def parse_coded_uuid(coded_uuid)
+    def self.parse_coded_uuid(coded_uuid)
       UUIDTools::UUID.parse_raw Base64.urlsafe_decode64("#{coded_uuid}==")
+    end
+
+    ##
+    # Create a new set of uuids.
+    #
+    def self.create_uuids(parent={})
+      {
+        uuid: create_coded_uuid,
+        parent_uuid: parent['uuid'],
+        origin_uuid: (
+          parent[:origin_uuid] ||
+          parent[:parent_uuid] ||
+          parent[:uuid])
+      }
+    end
+
+    ##
+    # Set a message's UUIDs with new UUIDs based on the parent's UUIDs.
+    #
+    def self.annotate_with_uuids!(message, parent={})
+      uuids = self.create_uuids parent
+      message[:uuid] ||= uuids[:uuid]
+      message[:parent_uuid] ||= uuids[:parent_uuid]
+      message[:origin_uuid] ||= uuids[:origin_uuid]
+      return nil
     end
 
   end

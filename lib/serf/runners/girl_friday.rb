@@ -1,6 +1,5 @@
 require 'girl_friday'
 
-require 'serf/messages/message_accepted_event'
 require 'serf/runners/helper'
 require 'serf/util/error_handling'
 
@@ -30,12 +29,6 @@ module Runners
     end
 
     def call(handlers, context)
-      # Create our accepted event before we enqueue the handlers.
-      mae_class = opts(
-        :message_accepted_event_class,
-        ::Serf::Messages::MessageAcceptedEvent)
-      event = mae_class.new message: context
-
       # Push each handler into the queue along with a copy of the context.
       handlers.each do |handler|
         @queue.push(
@@ -45,7 +38,10 @@ module Runners
 
       # We got here, we succeeded pushing all the works.
       # Now we return our accepted event.
-      return event
+      return {
+        kind: 'serf/messages/message_accepted_event',
+        message: context
+      }
     end
 
     ##
