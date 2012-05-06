@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "serf"
-  s.version = "0.8.0"
+  s.version = "0.9.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Benjamin Yu"]
-  s.date = "2012-04-19"
+  s.date = "2012-05-06"
   s.description = "Event-Driven SOA with CQRS"
   s.email = "benjaminlyu@gmail.com"
   s.extra_rdoc_files = [
@@ -30,12 +30,8 @@ Gem::Specification.new do |s|
     "lib/serf/builder.rb",
     "lib/serf/command.rb",
     "lib/serf/error.rb",
-    "lib/serf/message.rb",
-    "lib/serf/messages/caught_exception_event.rb",
-    "lib/serf/messages/message_accepted_event.rb",
     "lib/serf/middleware/uuid_tagger.rb",
     "lib/serf/more/command_worker.rb",
-    "lib/serf/more/uuid_fields.rb",
     "lib/serf/routing/endpoint.rb",
     "lib/serf/routing/registry.rb",
     "lib/serf/runners/direct.rb",
@@ -44,12 +40,15 @@ Gem::Specification.new do |s|
     "lib/serf/runners/helper.rb",
     "lib/serf/serfer.rb",
     "lib/serf/util/error_handling.rb",
+    "lib/serf/util/mash_factory.rb",
     "lib/serf/util/null_object.rb",
     "lib/serf/util/options_extraction.rb",
     "lib/serf/util/protected_call.rb",
     "lib/serf/util/regexp_matcher.rb",
     "lib/serf/util/uuidable.rb",
     "lib/serf/version.rb",
+    "schemas/caught_exception_event.json",
+    "schemas/message_accepted_event.json",
     "serf.gemspec",
     "spec/serf_spec.rb",
     "spec/spec_helper.rb"
@@ -66,43 +65,46 @@ Gem::Specification.new do |s|
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
       s.add_runtime_dependency(%q<activesupport>, [">= 3.2.0"])
       s.add_runtime_dependency(%q<i18n>, [">= 0.6.0"])
+      s.add_runtime_dependency(%q<hashie>, [">= 1.2.0"])
       s.add_runtime_dependency(%q<uuidtools>, [">= 2.1.2"])
       s.add_development_dependency(%q<rspec>, ["~> 2.8.0"])
       s.add_development_dependency(%q<yard>, ["~> 0.7.5"])
-      s.add_development_dependency(%q<bundler>, ["~> 1.0.22"])
+      s.add_development_dependency(%q<bundler>, ["~> 1.1.3"])
       s.add_development_dependency(%q<jeweler>, ["~> 1.8.3"])
       s.add_development_dependency(%q<simplecov>, [">= 0"])
-      s.add_development_dependency(%q<log4r>, ["~> 1.1.10"])
+      s.add_development_dependency(%q<log4r>, [">= 1.1.10"])
       s.add_development_dependency(%q<msgpack>, [">= 0.4.6"])
       s.add_development_dependency(%q<eventmachine>, [">= 0.12.10"])
-      s.add_development_dependency(%q<girl_friday>, ["~> 0.9.7"])
+      s.add_development_dependency(%q<girl_friday>, [">= 0.9.7"])
     else
       s.add_dependency(%q<activesupport>, [">= 3.2.0"])
       s.add_dependency(%q<i18n>, [">= 0.6.0"])
+      s.add_dependency(%q<hashie>, [">= 1.2.0"])
       s.add_dependency(%q<uuidtools>, [">= 2.1.2"])
       s.add_dependency(%q<rspec>, ["~> 2.8.0"])
       s.add_dependency(%q<yard>, ["~> 0.7.5"])
-      s.add_dependency(%q<bundler>, ["~> 1.0.22"])
+      s.add_dependency(%q<bundler>, ["~> 1.1.3"])
       s.add_dependency(%q<jeweler>, ["~> 1.8.3"])
       s.add_dependency(%q<simplecov>, [">= 0"])
-      s.add_dependency(%q<log4r>, ["~> 1.1.10"])
+      s.add_dependency(%q<log4r>, [">= 1.1.10"])
       s.add_dependency(%q<msgpack>, [">= 0.4.6"])
       s.add_dependency(%q<eventmachine>, [">= 0.12.10"])
-      s.add_dependency(%q<girl_friday>, ["~> 0.9.7"])
+      s.add_dependency(%q<girl_friday>, [">= 0.9.7"])
     end
   else
     s.add_dependency(%q<activesupport>, [">= 3.2.0"])
     s.add_dependency(%q<i18n>, [">= 0.6.0"])
+    s.add_dependency(%q<hashie>, [">= 1.2.0"])
     s.add_dependency(%q<uuidtools>, [">= 2.1.2"])
     s.add_dependency(%q<rspec>, ["~> 2.8.0"])
     s.add_dependency(%q<yard>, ["~> 0.7.5"])
-    s.add_dependency(%q<bundler>, ["~> 1.0.22"])
+    s.add_dependency(%q<bundler>, ["~> 1.1.3"])
     s.add_dependency(%q<jeweler>, ["~> 1.8.3"])
     s.add_dependency(%q<simplecov>, [">= 0"])
-    s.add_dependency(%q<log4r>, ["~> 1.1.10"])
+    s.add_dependency(%q<log4r>, [">= 1.1.10"])
     s.add_dependency(%q<msgpack>, [">= 0.4.6"])
     s.add_dependency(%q<eventmachine>, [">= 0.12.10"])
-    s.add_dependency(%q<girl_friday>, ["~> 0.9.7"])
+    s.add_dependency(%q<girl_friday>, [">= 0.9.7"])
   end
 end
 

@@ -6,7 +6,7 @@ source 'http://rubygems.org'
 # Requirements for both clients and servers.
 gem 'activesupport', '>= 3.2.0'
 gem 'i18n', '>= 0.6.0' # For ActiveSupport
-gem 'hashie'
+gem 'hashie', ">= 1.2.0"
 # Used by Serf::Messages::*
 gem 'uuidtools', '>= 2.1.2'
 
