@@ -1,4 +1,5 @@
 require 'base64'
+require 'hashie'
 require 'uuidtools'
 
 module Serf
@@ -62,14 +63,13 @@ module Util
     # Create a new set of uuids.
     #
     def self.create_uuids(parent={})
-      {
+      Hashie::Mash.new(
         uuid: create_coded_uuid,
         parent_uuid: parent[:uuid],
         origin_uuid: (
           parent[:origin_uuid] ||
           parent[:parent_uuid] ||
-          parent[:uuid])
-      }
+          parent[:uuid]))
     end
 
     ##
