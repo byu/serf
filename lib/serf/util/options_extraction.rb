@@ -1,3 +1,5 @@
+require 'hashie'
+
 module Serf
 module Util
 
@@ -29,7 +31,7 @@ module Util
     # Reader method for the options hash.
     #
     def options
-      return @options || {}
+      return @options || Hashie::Mash.new
     end
 
     ##
@@ -92,12 +94,21 @@ module Util
     protected
 
     ##
-    # Extracts the options from the arguments list.
+    # Extracts the options from the arguments list, BUT does not save it to
+    # an instance variable for use by the opts helpr methods.
+    #
+    def pop_options!(args)
+      args.last.is_a?(::Hash) ?
+        [true, Hashie::Mash.new(args.pop)] :
+        [false, Hashie::Mash.new]
+    end
+
+    ##
+    # Extracts the options from the arguments list, and saves it to the
+    # an instance variable for use by the opts helpr methods.
     #
     def extract_options!(args)
-      _, @options = args.last.is_a?(::Hash) ?
-        [true, args.pop.dup] :
-        [false, {}]
+      _, @options = pop_options! args
     end
 
   end
