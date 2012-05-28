@@ -22,13 +22,9 @@ module Util
     ##
     # A block wrapper to handle errors when executing a block.
     #
-    def with_error_handling(context=nil, errback=:handle_error, &block)
-      ok, results = protected_call &block
-      return ok, (ok ?
-        results :
-        ((errback.is_a?(Proc) ?
-          errback.call(results, context) :
-          send(errback, results, context))))
+    def with_error_handling(context=nil, *args, &block)
+      ok, results = pcall *args, &block
+      return ok, (ok ? results : handle_error(results, context))
     end
 
     ##
@@ -38,8 +34,8 @@ module Util
     # log the exception itself to the logger.
     #
     def handle_error(e, context=nil)
-      logger = opts :logger, ::Serf::Util::NullObject.new
-      error_channel = opts :error_channel, ::Serf::Util::NullObject.new
+      logger = opts(:logger){ ::Serf::Util::NullObject.new }
+      error_channel = opts(:error_channel) { ::Serf::Util::NullObject.new }
       error_event = {
         kind: 'serf/messages/caught_exception_event',
         context: context,
