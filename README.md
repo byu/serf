@@ -1,8 +1,11 @@
 serf
 ====
 
-Serf is a library that scaffolds distributed systems that are architected using
-Event-Driven Service Oriented Architecture design in combinations with
+Serf is simply a Rack-like library that, when called, routes received
+messages (requests or events) to "Command" handlers.
+
+The pattern of Command objects and messaging gives us nice primatives
+for Event-Driven Service Oriented Architecture in combination with
 the Command Query Responsibility Separation pattern.
 
 Philosophy
@@ -32,29 +35,28 @@ Handlers may process observed Events that 3rd party services emit.
 Serf App and Channels
 =====================
 
-A Serf App is a Rack-like application that accepts an ENV hash as input.
-This ENV hash is simply the hash representation of a message to be processed.
+A Serf App is a Rack-like application that takes in an ENV hash with
+TWO important fields: message and context.
 
-The Serf App, as configured by DSL, will:
-1. route the ENV to the proper Endpoint
-2. The endpoint will create a handler instance.
-  a. The handler's build class method will be given an ENV, which
-    may be handled as fit. The Command class will help by parsing it
-    into a Message object as registered by the implementing subclass.
-3. Push the handler's results to a response channel.
-  a. Raised errors are caught and pushed to an error channel.
-  b. These channels are normally message queuing channels.
-  c. We only require the channel instance to respond to the 'push'
-    method and accept a message (or message hash) as the argument.
-4. return the handler's results to the caller if it is blocking mode.
-  a. In non-blocking mode, an MessageAcceptedEvent is returned instead
-    because the message will be run by the EventMachine deferred threadpool
-    by default.
+The Message is the request or event. The data that is to be processed.
 
-Not implemented as yet:
-1. Create a message queue listener or web endpoint to accept messages
-  and run them through the built Serf App.
-2. Message Queue channels to route responses to pub/sub locations.
+The Context is meta data that needs to be taken into account about the
+processing of this data. The main important field may be a current user.
+Though, it is not explicitly defined.
+
+A request life cycle involves:
+1. Submitting a message and context to the SerfApp
+2. The Serf app will run middleware as defined by the DSL.
+3. Matched routes are found for the message and context.
+4. Run each route:
+  a. Run the policy chain for each route (This is for ACLs)
+  b. If no exception was raised, execute the route.
+5. Return all non-nil results to the caller.
+  a. Each result is a Message.
+
+If set in the DSL, the success and error responses may be published
+to a response and/or error channel.
+
 
 Service Libraries
 =================
@@ -65,10 +67,9 @@ Service Libraries
   b. By default, Serf Commands will read in hashes and turn them into
     more convenient Hashie::Mash objects.
 2. Serialization of the messages SHOULD BE Json or MessagePack (I hate XML).
-  a. Serf Builder will create Serf Apps that expect a HASH ENV as input
-3. Handlers MUST implement the 'build' class method, which
-  MUST receive the ENV Hash as the first parameter, followed by supplemental
-  arguments as declared in the DSL.
+3. Handlers MUST implement the 'build' class method.
+  a. This can just be aliased to new. But is made explicit in case we have
+    custom factories.
 4. Handler methods SHOULD return zero or more messages.
   a. Raised errors are caught and pushed to error channels.
   b. Returned messages MUST be Hash based objects for Serialization.
@@ -78,12 +79,12 @@ Service Libraries
   generic CaughtExceptionEvents, and are harder to deal with.
 
 
-Example With GirlFriday
-=======================
+Example
+=======
 
     # Require our libraries
-    require 'log4r'
     require 'json'
+    require 'yell'
 
     require 'serf/builder'
     require 'serf/command'
@@ -91,16 +92,10 @@ Example With GirlFriday
     require 'serf/util/options_extraction'
 
     # create a simple logger for this example
-    outputter = Log4r::FileOutputter.new(
-      'fileOutputter',
-      filename: 'log.txt')
-    ['tick',
-      'serf',
-      'hndl',
-      'resp',
-      'errr'].each do |name|
-      logger = Log4r::Logger.new name
-      logger.outputters = outputter
+    my_logger = Yell.new do |l|
+      l.level = :debug
+      l.adapter :datefile, 'my_production.log', :level => [:debug, :info, :warn]
+      l.adapter :datefile, 'my_error.log', :level => Yell.level.gte(:error)
     end
 
     # Helper class for this example to receive result or error messages
@@ -112,18 +107,22 @@ Example With GirlFriday
       end
       def push(message)
         if @error
-          @logger.fatal "#{message}"
+          @logger.fatal "ERROR CHANNEL: #{message.to_json}"
         else
-          @logger.debug "#{message}"
+          @logger.debug "RESP  CHANNEL: #{message.to_json}"
         end
       end
     end
 
-    # my_lib/my_validator.rb
-    class MyValidator
+    # my_lib/my_policy.rb
+    class MyPolicy
 
-      def self.validate!(data)
-        raise 'Data is nil' if data[:data].nil?
+      def check!(message, context)
+        raise 'EXPECTED ERROR: Data is nil' if message[:data].nil?
+      end
+
+      def self.build(*args, &block)
+        new *args, &block
       end
 
     end
@@ -132,30 +131,23 @@ Example With GirlFriday
     class MyOverloadedCommand
       include Serf::Command
 
-      self.request_validator = MyValidator
+      attr_reader :name
+      attr_reader :do_raise
 
       def initialize(*args)
-        super
-        raise "Constructor Error: #{opts(:name)}" if opts :raises_in_new
+        extract_options! args
+        @name = opts! :name
+        @do_raise = opts :raises, false
       end
 
-      def call
-        # Set our logger
-        logger = ::Log4r::Logger['hndl']
-
+      def call(request, context)
         # Just our name to sort things out
-        name = opts! :name
-        logger.info "#{name}: #{request.to_json}"
 
-        raise "Forcing Error in #{name}" if opts(:raises, false)
+        raise "EXPECTED ERROR: Forcing Error in #{name}" if do_raise
 
         # Do work Here...
         # And return 0 or more messages as result. Nil is valid response.
-        return { kind: "#{name}_result", input: request.to_hash }
-      end
-
-      def inspect
-        "MyOverloadedCommand: #{opts(:name,'notnamed')}, #{request.to_json}"
+        return { kind: "#{name}_result", input: request }
       end
 
     end
@@ -163,279 +155,88 @@ Example With GirlFriday
     # Create a new builder for this serf app.
     builder = Serf::Builder.new do
       # Include some middleware
+      use Serf::Middleware::Masherize
       use Serf::Middleware::UuidTagger
+      #use Serf::Middleware::GirlFridayAsync
 
       # Create response and error channels for the handler result messages.
-      response_channel MyChannel.new(::Log4r::Logger['resp'])
-      error_channel MyChannel.new(::Log4r::Logger['errr'], true)
+      response_channel MyChannel.new my_logger
+      error_channel MyChannel.new my_logger, true
 
       # We pass in a logger to our Serf code: Serfer and Runners.
-      logger ::Log4r::Logger['serf']
+      logger my_logger
 
-      runner :direct
-
+      # Here, we define a route.
+      # We are matching the kind for 'my_message', and we have the MyPolicy
+      # to filter for this route.
       match 'my_message'
+      policy MyPolicy
       run MyOverloadedCommand, name: 'my_message_command'
 
-      match 'raise_error_message'
-      run MyOverloadedCommand, name: 'foreground_raises_error', raises: true
-      run MyOverloadedCommand, name: 'constructor_error', raises_in_new: true
-
       match 'other_message'
-      run MyOverloadedCommand, name: 'foreground_other_message'
-
-      runner :girl_friday
-
-      # This message kind is handled by multiple handlers.
-      match 'other_message'
-      run MyOverloadedCommand, name: 'background_other_message'
-      run MyOverloadedCommand, name: 'background_raises error', raises: true
+      run MyOverloadedCommand, name: 'raises_error', raises: true
+      run MyOverloadedCommand, name: 'good_other_handler'
 
       match /^events\/.*$/
       run MyOverloadedCommand, name: 'regexp_matched_command'
-
-      # Optionally define a not found handler...
-      # Defaults to raising an ArgumentError, 'Not Found'.
-      #not_found lambda {|x| puts x}
     end
     app = builder.to_app
-
-    # Start event machine loop.
-    logger = ::Log4r::Logger['tick']
-
-    logger.info "Start Tick #{Thread.current.object_id}"
 
     # This will submit a 'my_message' message (as a hash) to the Serf App.
     # NOTE: We should get an error message pushed to the error channel
     #  because no 'data' field was put in my_message as required
     #  And the Result should have a CaughtExceptionEvent.
-    logger.info "BEG MyMessage w/o Data"
-    results = app.call 'kind' => 'my_message'
-    logger.info "END MyMessage w/o Data: #{results.size} #{results.to_json}"
+    my_logger.info 'Call 1: Start'
+    results = app.call(
+      message: {
+        kind: 'my_message'
+      },
+      context: nil)
+    my_logger.info "Call 1: #{results.size} #{results.to_json}"
 
     # Here is good result
-    logger.info "BEG MyMessage w/ Data"
-    results = app.call 'kind' => 'my_message', 'data' => '1'
-    logger.info "END MyMessage w/ Data: #{results.size} #{results.to_json}"
+    my_logger.info 'Call 2: Start'
+    results = app.call(
+      message: {
+        kind: 'my_message',
+        data: '2'
+      },
+      context: nil)
+    my_logger.info "Call 2: #{results.size} #{results.to_json}"
 
-    # Here is a result that will raise an error in foreground
     # We should get two event messages in the results because we
-    # mounted two commands to the raise_error_message kind.
-    # Each shows errors being raised in two separate stages.
-    # 1. Error in creating the instance of the command.
-    # 2. Error when the command was executed by the foreground runner.
-    logger.info "BEG RaisesErrorMessage"
-    results = app.call 'kind' => 'raise_error_message', 'data' => '2'
-    logger.info "END RaisesErrorMessage: #{results.size} #{results.to_json}"
-
-    # This submission will be executed by THREE commands.
-    #   One in the foreground, two in the background.
-    #
-    # The foreground results should be:
-    # * MessageAcceptedEvent
-    # * And return result of one command call
-    #
-    # The error channel should output an error from one background command.
-    logger.info "BEG OtherMessage"
-    results = app.call 'kind' => 'other_message', 'data' => '3'
-    logger.info "END OtherMessage: #{results.size} #{results.to_json}"
+    # mounted two commands to the other_message kind.
+    my_logger.info 'Call 3: Start'
+    results = app.call(
+      message: {
+        kind: 'other_message',
+        data: '3'
+      },
+      context: nil)
+    my_logger.info "Call 3: #{results.size} #{results.to_json}"
 
     # This will match a regexp call
-    logger.info "BEG Regexp"
-    results = app.call 'kind' => 'events/my_event', 'data' => '4'
-    logger.info "END Regexp Results: #{results.size} #{results.to_json}"
+    my_logger.info 'Call 4: Start'
+    results = app.call(
+      message: {
+        kind: 'events/my_event',
+        data: '4'
+      },
+      context: nil)
+    my_logger.info "Call 4: #{results.size} #{results.to_json}"
 
     begin
       # Here, we're going to submit a message that we don't handle.
       # By default, an exception will be raised.
-      app.call 'kind' => 'unhandled_message_kind'
+      my_logger.info 'Call 5: Start'
+      app.call(
+        message: {
+          kind: 'unhandled_message_kind'
+        },
+        context: nil)
+      my_logger.fatal 'OOOPS: Should not get here'
     rescue => e
-      logger.warn "Caught in Tick: #{e.inspect}"
-    end
-    logger.info "End Tick #{Thread.current.object_id}"
-
-
-Example With EventMachine
-=========================
-
-    # Require our libraries
-    require 'log4r'
-    require 'json'
-
-    require 'serf/builder'
-    require 'serf/command'
-    require 'serf/middleware/uuid_tagger'
-    require 'serf/util/options_extraction'
-
-    # create a simple logger for this example
-    outputter = Log4r::FileOutputter.new(
-      'fileOutputter',
-      filename: 'log.txt')
-    ['tick',
-      'serf',
-      'hndl',
-      'resp',
-      'errr'].each do |name|
-      logger = Log4r::Logger.new name
-      logger.outputters = outputter
-    end
-
-    # Helper class for this example to receive result or error messages
-    # and pipe it into our logger.
-    class MyChannel
-      def initialize(logger, error=false)
-        @logger = logger
-        @error = error
-      end
-      def push(message)
-        if @error
-          @logger.fatal "#{message}"
-        else
-          @logger.debug "#{message}"
-        end
-      end
-    end
-
-    # my_lib/my_message.rb
-    class MyValidator
-
-      def self.validate!(data)
-        raise 'Data Missing Error' if data[:data].nil?
-      end
-
-    end
-
-    # my_lib/my_overloaded_command.rb
-    class MyOverloadedCommand
-      include Serf::Command
-
-      self.request_validator = MyValidator
-
-      def initialize(*args)
-        super
-        raise "Constructor Error: #{opts(:name)}" if opts :raises_in_new
-      end
-
-      def call
-        # Set our logger
-        logger = ::Log4r::Logger['hndl']
-
-        # Just our name to sort things out
-        name = opts! :name
-        logger.info "#{name}: #{request.to_json}"
-
-        raise "Forcing Error in #{name}" if opts(:raises, false)
-
-        # Do work Here...
-        # And return 0 or more messages as result. Nil is valid response.
-        return { kind: "#{name}_result", input: request.to_hash }
-      end
-
-      def inspect
-        "MyOverloadedCommand: #{opts(:name,'notnamed')}, #{request.to_json}"
-      end
-
-    end
-
-    # Create a new builder for this serf app.
-    builder = Serf::Builder.new do
-      # Include some middleware
-      use Serf::Middleware::UuidTagger
-
-      # Create response and error channels for the handler result messages.
-      response_channel MyChannel.new(::Log4r::Logger['resp'])
-      error_channel MyChannel.new(::Log4r::Logger['errr'], true)
-
-      # We pass in a logger to our Serf code: Serfer and Runners.
-      logger ::Log4r::Logger['serf']
-
-      runner :direct
-
-      match 'my_message'
-      run MyOverloadedCommand, name: 'my_message_command'
-
-      match 'raise_error_message'
-      run MyOverloadedCommand, name: 'foreground_raises_error', raises: true
-      run MyOverloadedCommand, name: 'constructor_error', raises_in_new: true
-
-      match 'other_message'
-      run MyOverloadedCommand, name: 'foreground_other_message'
-
-      runner :event_machine
-
-      # This message kind is handled by multiple handlers.
-      match 'other_message'
-      run MyOverloadedCommand, name: 'background_other_message'
-      run MyOverloadedCommand, name: 'background_raises error', raises: true
-
-      match /^events\/.*$/
-      run MyOverloadedCommand, name: 'regexp_matched_command'
-
-      # Optionally define a not found handler...
-      # Defaults to raising an ArgumentError, 'Not Found'.
-      #not_found lambda {|x| puts x}
-    end
-    app = builder.to_app
-
-    # Start event machine loop.
-    logger = ::Log4r::Logger['tick']
-    EM.run do
-      # On the next tick
-      EM.next_tick do
-        logger.info "Start Tick #{Thread.current.object_id}"
-
-        # This will submit a 'my_message' message (as a hash) to the Serf App.
-        # NOTE: We should get an error message pushed to the error channel
-        #  because no 'data' field was put in my_message as required
-        #  And the Result should have a CaughtExceptionEvent.
-        logger.info "BEG MyMessage w/o Data"
-        results = app.call 'kind' => 'my_message'
-        logger.info "END MyMessage w/o Data: #{results.size} #{results.to_json}"
-
-        # Here is good result
-        logger.info "BEG MyMessage w/ Data"
-        results = app.call 'kind' => 'my_message', 'data' => '1'
-        logger.info "END MyMessage w/ Data: #{results.size} #{results.to_json}"
-
-        # Here is a result that will raise an error in foreground
-        # We should get two event messages in the results because we
-        # mounted two commands to the raise_error_message kind.
-        # Each shows errors being raised in two separate stages.
-        # 1. Error in creating the instance of the command.
-        # 2. Error when the command was executed by the foreground runner.
-        logger.info "BEG RaisesErrorMessage"
-        results = app.call 'kind' => 'raise_error_message', 'data' => '2'
-        logger.info "END RaisesErrorMessage: #{results.size} #{results.to_json}"
-
-        # This submission will be executed by THREE commands.
-        #   One in the foreground, two in the background.
-        #
-        # The foreground results should be:
-        # * MessageAcceptedEvent
-        # * And return result of one command call
-        #
-        # The error channel should output an error from one background command.
-        logger.info "BEG OtherMessage"
-        results = app.call 'kind' => 'other_message', 'data' => '3'
-        logger.info "END OtherMessage: #{results.size} #{results.to_json}"
-
-        # This will match a regexp call
-        logger.info "BEG Regexp"
-        results = app.call 'kind' => 'events/my_event', 'data' => '4'
-        logger.info "END Regexp Results: #{results.size} #{results.to_json}"
-
-        begin
-          # Here, we're going to submit a message that we don't handle.
-          # By default, an exception will be raised.
-          app.call 'kind' => 'unhandled_message_kind'
-        rescue => e
-          logger.warn "Caught in Tick: #{e.inspect}"
-        end
-        logger.info "End Tick #{Thread.current.object_id}"
-      end
-      EM.add_timer 2 do
-        EM.stop
-      end
+      my_logger.info "Call 5: Caught in main: #{e.inspect}"
     end
 
 

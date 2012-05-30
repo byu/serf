@@ -1,6 +1,5 @@
-require 'serf/routing/endpoint'
-require 'serf/routing/registry'
-require 'serf/runners/direct'
+require 'serf/routing/route'
+require 'serf/routing/route_set'
 require 'serf/serfer'
 require 'serf/util/null_object'
 require 'serf/util/options_extraction'
@@ -9,7 +8,7 @@ module Serf
 
   ##
   # A Serf Builder that processes the SerfUp DSL to build a rack-like
-  # app to endpoint and process received messages. This builder is
+  # app to handlers that process received messages. This builder is
   # implemented based on code from Rack::Builder.
   #
   #   builder = Serf::Builder.parse_file 'examples/config.su'
@@ -25,47 +24,80 @@ module Serf
   class Builder
     include Serf::Util::OptionsExtraction
 
+    attr_reader :serfer_factory
+    attr_reader :route_set_factory
+    attr_reader :route_factory
+
     def self.parse_file(config)
       cfgfile = ::File.read(config)
-      builder = eval "::Serf::Builder.new {\n" + cfgfile + "\n}",
+      builder = eval "Serf::Builder.new {\n" + cfgfile + "\n}",
         TOPLEVEL_BINDING, config
       return builder
+    end
+
+    def self.app(*args, &block)
+      new(*args, &block).to_app
     end
 
     def initialize(*args, &block)
       extract_options! args
 
-      # Configuration about the endpoints and apps to run.
+      # Our factories
+      @serfer_factory = opts :serfer_factory, Serf::Serfer
+      @route_set_factory = opts :route_set_factory, Serf::Routing::RouteSet
+      @route_factory = opts :route_factory, Serf::Routing::Route
+
+      # List of middleware to be executed (non-built form)
       @use = []
-      @not_found = opts :not_found, lambda { |env|
-        raise ArgumentError, 'Endpoints Not Found'
-      }
 
-      # Utility and messaging channels that get passed as options
-      # when building our Runners and Handlers.
-      @response_channel = ::Serf::Util::NullObject.new
-      @error_channel = ::Serf::Util::NullObject.new
-      @logger = ::Serf::Util::NullObject.new
+      # A list of "mounted", non-built, command handlers with their
+      # matcher and policies.
+      @runs = []
 
-      # Set up the starting state for our DSL calls.
-      @runner_matcher_endpoint_map = {}
-      @runner_params = {}
-      runner :direct
+      # List of default policies to be run (non-built form)
+      @default_policies = []
+
+      # The current matcher
       @matcher = nil
+
+      # Current policies to be run (PRE-built)
+      @policies = []
 
       # configure based on a given block.
       instance_eval(&block) if block_given?
     end
 
-    def self.app(default_app=nil, &block)
-      self.new(default_app, &block).to_app
+    ##
+    # Append a policy to default policy chain. The default
+    # policy chain is used by any route that does not define
+    # at least one of its own policies.
+    #
+    # @param policy the policy factory to append
+    # @param *args the arguments to pass to the factory
+    # @param &block the block to pass to the factory
+    def default_policy(policy, *args, &block)
+      @default_policies << proc { policy.build(*args, &block) }
     end
 
+    ##
+    # Append a rack-like middleware
+    #
+    # @param the middleware class
+    # @param *args the arguments to pass to middleware.new
+    # @param &block the block to pass to middleware.new
     def use(middleware, *args, &block)
       @use << proc { |app| middleware.new(app, *args, &block) }
     end
 
-    def not_found(app); @not_found = app; end
+    ##
+    # Append a policy to the current match's policy chain.
+    #
+    # @param policy the policy factory to append
+    # @param *args the arguments to pass to the factory
+    # @param &block the block to pass to the factory
+    def policy(policy, *args, &block)
+      @policies << proc { policy.build(*args, &block) }
+    end
 
     def response_channel(channel); @response_channel = channel; end
     def error_channel(channel); @error_channel = channel; end
@@ -74,74 +106,34 @@ module Serf
     ##
     # DSL Method to change our current context to use the given matcher.
     #
-    def match(matcher); @matcher = matcher; end
+    def match(matcher)
+      @matcher = matcher
+      @policies = []
+    end
 
     ##
-    # Mount and endpoint to the current context's Runner and Matcher.
-    # Connected so the endpoint will pass serf_options to the handler's build.
-    def run(*args, &block); mount true, *args, &block; end
-
-    ##
-    # Mount and endpoint to the current context's Runner and Matcher.
-    # Unconnected so the endpoint will omit serf_options to the handler's build.
-    def run_unconnected(*args, &block); mount false, *args, &block; end
-
-    ##
-    # The generic mount method used by run & run_unconnected to create an
-    # endpoint to be associated with the current context's Runner and Matcher.
-    def mount(connected, handler_factory, *args, &block)
+    # @param command_factory the factory to invoke (in #to_app)
+    # @param *args the rest of the args to pass to command_factory#build method
+    # @param &block the block to pass to command_factory#build method
+    def run(command_factory, *args, &block)
       raise 'No matcher defined yet' unless @matcher
-      @runner_matcher_endpoint_map[@runner_factory] ||= {}
-      @runner_matcher_endpoint_map[@runner_factory][@matcher] ||= []
-      @runner_matcher_endpoint_map[@runner_factory][@matcher] <<
-        Serf::Routing::Endpoint.new(
-          connected,
-          handler_factory,
-          *args,
-          &block)
-    end
+      # Create a local duplicate of the matcher and policies "snapshotted"
+      # at the time this method is called... so that snapshot is consistent
+      # for when the proc is called.
+      matcher = @matcher.dup
+      policies = @policies.dup
 
-    ##
-    # DSL Method to change our current context to use the given runner.
-    #
-    def runner(type)
-      @runner_factory = case type
-      when :direct
-        ::Serf::Runners::Direct
-      when :event_machine
-        begin
-          require 'serf/runners/event_machine'
-          Serf::Runners::EventMachine
-        rescue NameError => e
-          e.extend Serf::Error
-          raise e
-        end
-      when :girl_friday
-        begin
-          require 'serf/runners/girl_friday'
-          Serf::Runners::GirlFriday
-        rescue NameError => e
-          e.extend Serf::Error
-          raise e
-        end
-      else
-        raise 'No callable runner' unless type.respond_to? :build
-        type
-      end
-    end
-
-    def params(*args)
-      @runner_params[@runner_factory] = args
-    end
-
-    ##
-    # Returns a hash of our current serf infrastructure options
-    # to be passed to Endpoint#build methods.
-    def serf_options
-      {
-        response_channel: @response_channel,
-        error_channel: @error_channel,
-        logger: @logger
+      # This proc will be called in to_app when we actually go ahead and
+      # instantiate all the objects. By this point, route_set and
+      # default_policies passed to this proc will be ready, built.
+      @runs << proc { |route_set, default_policies|
+        route_set.add(
+          matcher,
+          route_factory.build(
+            command: command_factory.build(*args, &block),
+            policies: (policies.size > 0 ?
+              policies.map{ |p| p.call } :
+              default_policies)))
       }
     end
 
@@ -149,54 +141,26 @@ module Serf
     # Create our app.
     #
     def to_app
-      # By default, we go to the not_found app.
-      app = @not_found
-
-      registries = {}
-
-      # Set additional options for all the mounts
-      @runner_matcher_endpoint_map.each do |runner_factory, matcher_endpoints|
-
-        # 1. Create a registry for our given hash of matchers to endpoints.
-        # 2. Convert the hash of matcher to endpoints into a useable registry
-        #   for lookups.
-        registry = ::Serf::Routing::Registry.new
-        matcher_endpoints.each do |matcher, endpoints|
-          registry.add matcher, endpoints
-        end
-
-        # Ok, we'll create the runner and add it to our registries hash
-        # if we actually have endpoints here.
-        if registry.size > 0
-          runner_params = @runner_params[runner_factory] ?
-            @runner_params[runner_factory] :
-            []
-          runner_params << (runner_params.last.is_a?(Hash) ?
-            runner_params.pop.merge(serf_options) :
-            serf_options)
-          runner = runner_factory.build *runner_params
-          registries[runner] = registry
-        end
+      # Create the route_set to resolve routes
+      route_set = route_set_factory.build
+      # Build the default policies to be used if routes did not specify any.
+      default_policies = @default_policies.map{ |p| p.call }
+      # Add each route to the route_set
+      for run in @runs
+        run.call route_set, default_policies
       end
-
-      if registries.size > 0
-        app = Serf::Serfer.build(
-          # The registries to match, and their runners to execute.
-          registries: registries,
-          # App if no endpoints were found.
-          not_found: app,
-          # Serf infrastructure options to pass to 'connected' Endpoints
-          # to build a handler instance for each env hash received.
-          serf_options: serf_options,
-          # Options to use by serfer because it includes ErrorHandling.
-          error_channel: @error_channel,
-          logger: @logger)
-      end
+      # Create our serfer class
+      app = serfer_factory.build(
+        route_set: route_set,
+        response_channel: (@response_channel || Serf::Util::NullObject.new),
+        error_channel: (@error_channel || Serf::Util::NullObject.new),
+        logger: (@logger || Serf::Util::NullObject.new))
 
       # We're going to inject middleware here.
       app = @use.reverse.inject(app) { |a,e| e[a] } if @use.size > 0
 
       return app
     end
+
   end
 end

@@ -1,8 +1,10 @@
 require 'active_support/concern'
 require 'active_support/core_ext/class/attribute'
 
-require 'serf/util/mash_factory'
+require 'serf/util/error_handling'
 require 'serf/util/options_extraction'
+require 'serf/util/protected_call'
+require 'serf/util/uuidable'
 
 module Serf
 
@@ -12,47 +14,40 @@ module Serf
   #   class MyCommand
   #     include Serf::Command
   #
-  #     # Set a default Message Parser for the class.
-  #     self.request_factory = MySerfRequestMessage
-  #
-  #     # Validate the request, like using JSON-Schema for hash
-  #     # (or Hashie's Mash) requests.
-  #     self.request_validator = MySerfRequestValidator
-  #
-  #     def initialize(*args, &block)
+  #     def initialize(*contructor_params, &block)
   #       # Do some validation here, or extra parameter setting with the args
+  #       @model = opts :model, MyModel
   #     end
   #
-  #     def call
-  #       # Do something w/ @request and @opts
-  #       return nil # e.g. MySerfMessage
+  #     def call(request, context)
+  #       # Do something w/ request, opts and context.
+  #       item = @model.find request.model_id
+  #       # create a new hashie of UUIDs, which we will use as the base
+  #       # hash of our response
+  #       response = create_uuids request
+  #       response.kind = 'my_command/events/did_something'
+  #       response.item = item
+  #       return response
   #     end
   #   end
   #
-  #   MyCommand.call(REQUEST_ENV, some, extra, params, options_hash, &block)
-  #
-  #   # Built in lambda wrapping to use the MyCommand with GirlFriday.
-  #   worker = MyCommand.worker some, extra, params, options_hash, &block
-  #   work_queue = GirlFriday::WorkQueue.new &worker
-  #   work_queue.push REQUEST_ENV
+  #   constructor_params = [1, 2, 3, 4, etc]
+  #   block = Proc.new {}
+  #   request = ::Hashie::Mash.new
+  #   context = ::Hashie::Mash.new user: current_user
+  #   MyCommand.call(request, context, *contructor_params, &block)
   #
   module Command
     extend ActiveSupport::Concern
+
+    # Including Serf::Util::*... Order matters, kind of, here.
+    include Serf::Util::Uuidable
     include Serf::Util::OptionsExtraction
+    include Serf::Util::ProtectedCall
+    include Serf::Util::ErrorHandling
 
-    included do
-      class_attribute :request_factory
-      __send__ 'request_factory=', Serf::Util::MashFactory
-      class_attribute :request_validator
-      attr_reader :request
-    end
-
-    def call
+    def call(request, context=nil *args, &block)
       raise NotImplementedError
-    end
-
-    def validate_request!
-      request_validator.validate! request if request_validator
     end
 
     module ClassMethods
@@ -60,55 +55,23 @@ module Serf
       ##
       # Class method that both builds then executes the unit of work.
       #
-      def call(*args, &block)
-        self.build(*args, &block).call
+      # @param request the request
+      # @param context the context about the request. Things like the
+      #   requesting :user for ACL.
+      # @param *args remaining contructor arguments
+      # @param &block the block to pass to constructor
+      #
+      def call(request, context=::Hashie::Mash.new, *args, &block)
+        self.build(*args, &block).call(request, context)
       end
 
       ##
       # Factory build method that creates an object of the implementing
-      # class' unit of work with the given parameters.
+      # class' unit of work with the given parameters. By default,
+      # This just calls the class new method.
       #
       def build(*args, &block)
-        # The very first argument is the Request, we shift it off the args var.
-        req = args.shift
-        req = {} if req.nil?
-
-        # Now we allocate the object, and do some options extraction that may
-        # modify the args array by popping off the last element if it is a hash.
-        obj = allocate
-        obj.__send__ :extract_options!, args
-
-        # If the request was a hash, we MAY be able to convert it into a
-        # request object. We only do this if a request_factory was set either
-        # in the options, or if the request_factory class attribute is set.
-        # Otherwise, just give the command the hash, and it is up to them
-        # to understand what was given to it.
-        factory = obj.opts :request_factory, self.request_factory
-        request = (req.is_a?(Hash) && factory ? factory.build(req) : req)
-
-        # Set the request instance variable to whatever type of request we got.
-        obj.instance_variable_set :@request, request
-
-        # Finalize the object's construction with the rest of the args & block.
-        obj.__send__ :initialize, *args, &block
-
-        # Now validate that the request is ok.
-        # Implementing classes MAY override this method to do different
-        # kind of request validation.
-        obj.validate_request!
-
-        return obj
-      end
-
-      ##
-      # Generates a curried function to execute a Command's call class method.
-      #
-      # @returns lambda block to execute a call.
-      #
-      def worker(*args, &block)
-        lambda { |message|
-          self.call message, *args, &block
-        }
+        new *args, &block
       end
 
     end

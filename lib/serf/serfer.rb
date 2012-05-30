@@ -1,145 +1,87 @@
-require 'active_support/core_ext/hash/keys'
+require 'hashie'
 
 require 'serf/error'
+require 'serf/errors/not_found'
 require 'serf/util/error_handling'
+require 'serf/util/null_object'
 
 module Serf
 
+  ##
+  # Class to drive the command handler execution, error handling, etc
+  # of received messages.
   class Serfer
-    include ::Serf::Util::ErrorHandling
+    include Serf::Util::ErrorHandling
+
+    attr_reader :route_set
+    attr_reader :response_channel
+    attr_reader :error_channel
+    attr_reader :logger
 
     def initialize(*args)
       extract_options! args
 
-      # Map of Runners to Registries
-      @registries = opts :registries, {}
-
-      # Additional serf infrastructure options to pass to Endpoints#build.
-      @serf_options = opts :serf_options, {}
-
-      # Options for handling the requests
-      @not_found = opts :not_found, lambda { |env|
-        raise ArgumentError, 'Handler Not Found'
-      }
+      @route_set = opts! :route_set
+      @response_channel = opts(:response_channel) { Serf::Util::NullObject }
+      @error_channel = opts(:error_channel) { Serf::Util::NullObject }
+      @logger = opts(:logger) { Serf::Util::NullObject }
     end
 
     ##
     # Rack-like call to run a set of handlers for a message
     #
     def call(env)
-      # We normalize by symbolizing the env keys
-      env = env.symbolize_keys
+      env = Hashie::Mash.new env unless env.is_a? Hashie::Mash
 
-      # Call the processor
-      matched, results = process_request env
+      # We normalize by making the request a Hashie Mash
+      message = Hashie::Mash.new env.message
+      context = Hashie::Mash.new env.context
 
-      # If we don't have any handlers, do the not_found call.
-      # NOTE: Purposefully not wrapping this in exception handling.
-      return @not_found.call env unless matched > 0
+      # Resolve the routes that we want to run
+      routes = route_set.resolve message, context
 
+      # We raise an error if no routes were found.
+      raise Serf::Errors::NotFound unless routes.size > 0
+
+      # For each route, we're going to execute
+      results = routes.map { |route|
+        # 1. Check request+context with the policies (RAISE)
+        # 2. Execute command (RETURNS Hash)
+        ok, res = with_error_handling(
+            message: message,
+            options: context) do
+          route.check_policies! message, context
+          route.execute! message, context
+        end
+        # Return the run_results as result of this block.
+        res
+      }.flatten.select { |r| r }
+      push_results results, context
       return results
     rescue => e
-      e.extend(::Serf::Error)
+      e.extend(Serf::Error)
       raise e
     end
-    alias_method :push, :call
-    alias_method :<<, :call
 
-    def self.build(options={})
-      self.new options
+    def self.build(*args, &block)
+      new *args, &block
     end
 
-    protected
+    private
 
     ##
-    # Do the work of processing the env.
-    # 1. Match our endpoints to run, keep associated with their runner.
-    # 2. Turn endpoints into actual handlers that can be called by runners.
-    # 3. Call runner to process the endpoints
-    # 4. Return results
-    #
-    # NOTES:
-    # * Any error in matching will be raised to the caller, not absorbed by
-    #   the error handler.
-    # * Any error in Handler creation from endpoint will be caught by the
-    #   error handler, (1) pushed to the error channel and (2)
-    #   an error event will included in the results pass back to caller.
-    #   (a) There may be successul handlers created that can complete.
-    # * If the runner raises an error, it will be caught and the error
-    #   event will be appended to the results. This is so one
-    #   runner failure will not affect another runner's run.
-    #   Each runner SHOULD do their own error handling so errors in
-    #   one handler will not affect another in the list of handlers the runner
-    #   is to process.
-    # * RUNNERS MUST push errors they catch to the error channel.
-    #
-    def process_request(env)
-      # This will be the work we need to do.
-      # This is a hash of runners to handlers to run.
-      tasks = {}
-
-      # We're going to concat all the results
-      results = []
-
-      # Figure out which endpoints to run.
-      matches = match_endpoints env
-
-      # Now we go head and create our Tasks (Units of Work)
-      # for each of the matched endpoints (with their runners).
-      matches.each do |runner, endpoints|
-        # We create the unit of work
-        handlers = endpoints.map{ |endpoint|
-          # We try to build the endpoint. Any errors here will
-          # be caught and returned to the caller.
-          # This is so individual building of tasks do not affect other tasks.
-          ok, obj = with_error_handling(env) do
-            endpoint.build env.dup, @serf_options
-          end
-          # The return of this if/else statement will be result of map item.
-          if ok
-            obj
-          else
-            results << obj
-            nil
-          end
-        }.
-        select{ |h| !h.nil? }
-
-        # No we enqueue the units of work into our task queue
-        # List could be empty because all build calls could have error out.
-        tasks[runner] = handlers if handlers.size > 0
-      end
-
-      # We call the runners with the handlers they need to execute.
-      # Errors raised by the runner are pushed to the error channel.
-      # Errors here are also passed back the caller of the SerfApp.
-      #
-      tasks.each do |runner, handlers|
-        ok, run_result = with_error_handling(env) do
-          runner.call handlers, env
+    # Loop over the results and push them to the response channel.
+    # Any error in pushing individual messages will result in
+    # a log event and an error channel event.
+    def push_results(results, context)
+      results.each do |result|
+        with_error_handling(result) do
+          response_channel.push(
+            message: result,
+            context: context)
         end
-        # We need to coerce the runner's results (nil, Hash, Array, Object)
-        # into an Array of messages.
-        # now we concat this run's results to our total results list.
-        run_result = run_result.is_a?(Hash) ? [run_result] : Array(run_result)
-        results.concat run_result
       end
-
-      return matches.size, results
-    end
-
-    ##
-    # Figure out which endpoints to run
-    #
-    def match_endpoints(env)
-      matches = {}
-
-      @registries.each do |runner, registry|
-        endpoints = registry.match env
-        matches[runner] = endpoints if endpoints.size > 0
-      end
-
-      return matches
+      return nil
     end
 
   end
