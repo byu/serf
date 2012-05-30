@@ -1,5 +1,6 @@
 require 'girl_friday'
 
+require 'serf/errors/not_found'
 require 'serf/util/options_extraction'
 require 'serf/util/uuidable'
 
@@ -20,7 +21,11 @@ module Middleware
       @queue = ::GirlFriday::WorkQueue.new(
           opts(:name, :serf_runner),
           :size => opts(:workers, 1)) do |env|
-        app.call env
+        begin
+          app.call env
+        rescue Serf::Errors::NotFound => e
+          # Do nothing.
+        end
       end
     end
 
