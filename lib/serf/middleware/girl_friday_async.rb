@@ -31,10 +31,10 @@ module Middleware
 
     def call(env)
       queue.push env
-      response = uuidable.create_uuids env.message
-      response.kind = 'serf/messages/message_accepted_event'
-      response.message = env.message
-      response.context = env.context
+      response = uuidable.create_uuids env[:message]
+      response[:kind] = 'serf/messages/message_accepted_event'
+      response[:message] = env[:message]
+      response[:context] = env[:context]
       return response
     end
 
