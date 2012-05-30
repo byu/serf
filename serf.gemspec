@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "serf"
-  s.version = "0.9.0"
+  s.version = "0.10.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Benjamin Yu"]
-  s.date = "2012-05-06"
+  s.date = "2012-05-30"
   s.description = "Event-Driven SOA with CQRS"
   s.email = "benjaminlyu@gmail.com"
   s.extra_rdoc_files = [
@@ -30,21 +30,18 @@ Gem::Specification.new do |s|
     "lib/serf/builder.rb",
     "lib/serf/command.rb",
     "lib/serf/error.rb",
+    "lib/serf/errors/not_found.rb",
+    "lib/serf/middleware/girl_friday_async.rb",
+    "lib/serf/middleware/masherize.rb",
     "lib/serf/middleware/uuid_tagger.rb",
-    "lib/serf/more/command_worker.rb",
-    "lib/serf/routing/endpoint.rb",
-    "lib/serf/routing/registry.rb",
-    "lib/serf/runners/direct.rb",
-    "lib/serf/runners/event_machine.rb",
-    "lib/serf/runners/girl_friday.rb",
-    "lib/serf/runners/helper.rb",
+    "lib/serf/routing/regexp_matcher.rb",
+    "lib/serf/routing/route.rb",
+    "lib/serf/routing/route_set.rb",
     "lib/serf/serfer.rb",
     "lib/serf/util/error_handling.rb",
-    "lib/serf/util/mash_factory.rb",
     "lib/serf/util/null_object.rb",
     "lib/serf/util/options_extraction.rb",
     "lib/serf/util/protected_call.rb",
-    "lib/serf/util/regexp_matcher.rb",
     "lib/serf/util/uuidable.rb",
     "lib/serf/version.rb",
     "schemas/caught_exception_event.json",
