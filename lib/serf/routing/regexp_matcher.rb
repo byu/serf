@@ -1,5 +1,7 @@
+require 'serf/util/options_extraction'
+
 module Serf
-module Util
+module Routing
 
   ##
   # A matcher that does a regexp match on a specific field
@@ -7,20 +9,24 @@ module Util
   # on message kinds for routing.
   #
   class RegexpMatcher
+    include Serf::Util::OptionsExtraction
+
     attr_reader :regexp
     attr_reader :field
 
-    def initialize(regexp, options={})
+    def initialize(regexp, *args)
+      extract_options! args
+
       @regexp = regexp
-      @field = options.fetch(:field) { :kind }
+      @field = opts :field, :kind
     end
 
     def ===(env)
-      return @regexp === env[@field]
+      return regexp === env[field]
     end
 
-    def self.build(regexp)
-      return self.new regexp
+    def self.build(*args, &block)
+      new *args, &block
     end
 
   end

@@ -1,4 +1,5 @@
 require 'base64'
+require 'hashie'
 require 'uuidtools'
 
 module Serf
@@ -11,6 +12,30 @@ module Util
   #   base64 encoded UUIDs without trailing '='.
   #
   module Uuidable
+
+    ##
+    # @see self.create_coded_uuid
+    def create_coded_uuid
+      Uuidable.create_coded_uuid
+    end
+
+    ##
+    # @see self.parse_coded_uuid
+    def parse_coded_uuid(coded_uuid)
+      Uuidable.parse_coded_uuid coded_uuid
+    end
+
+    ##
+    # @see self.create_uuids
+    def create_uuids(parent={})
+      Uuidable.create_uuids parent
+    end
+
+    ##
+    # @see self.annotate_with_uuids!
+    def annotate_with_uuids!(message, parent={})
+      Uuidable.annotate_with_uuids! message, parent
+    end
 
     ##
     # Creates a Timestamp UUID, base64 encoded.
@@ -38,14 +63,13 @@ module Util
     # Create a new set of uuids.
     #
     def self.create_uuids(parent={})
-      {
+      Hashie::Mash.new(
         uuid: create_coded_uuid,
-        parent_uuid: parent['uuid'],
+        parent_uuid: parent[:uuid],
         origin_uuid: (
           parent[:origin_uuid] ||
           parent[:parent_uuid] ||
-          parent[:uuid])
-      }
+          parent[:uuid]))
     end
 
     ##

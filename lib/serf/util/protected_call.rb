@@ -23,11 +23,12 @@ module Util
     #
     # @return boolean success and the block's (or caught exception) results.
     #
-    def protected_call
-      return true, yield
+    def pcall(*args)
+      return true, yield(*args)
     rescue => e
       return false, e
     end
+    alias_method :protected_call, :pcall
 
   end
 
