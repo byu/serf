@@ -1,5 +1,3 @@
-require 'active_support/core_ext/string/inflections'
-
 require 'serf/util/null_object'
 require 'serf/util/options_extraction'
 require 'serf/util/protected_call'
@@ -38,9 +36,10 @@ module Util
       error_channel = opts(:error_channel) { ::Serf::Util::NullObject.new }
       error_event = {
         kind: 'serf/messages/caught_exception_event',
-        context: context,
-        error: e.class.to_s.underscore,
+        error: e.class.to_s,
         message: e.message,
+        context: context,
+        process_env: ENV.to_hash,
         backtrace: e.backtrace.join("\n")
       }
 
