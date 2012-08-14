@@ -1,5 +1,4 @@
 require 'active_support/concern'
-require 'active_support/core_ext/class/attribute'
 
 require 'serf/util/options_extraction'
 require 'serf/util/protected_call'
@@ -44,7 +43,7 @@ module Serf
     include Serf::Util::OptionsExtraction
     include Serf::Util::ProtectedCall
 
-    def call(message, headers=nil *args, &block)
+    def call(message, headers=nil, *args, &block)
       raise NotImplementedError
     end
 
