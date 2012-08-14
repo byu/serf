@@ -43,7 +43,7 @@ module Routing
     # @param [Hash] request The input message to match for routes.
     # @return [Array] List of routes that matched.
     #
-    def resolve(request, context)
+    def resolve(request, headers)
       resolved_routes = []
       resolved_routes.concat routes.fetch(request[:kind]) { [] }
       matchers.each do |matcher|
