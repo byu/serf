@@ -27,13 +27,13 @@ module Util
 
     ##
     # @see self.create_uuids
-    def create_uuids(parent={})
+    def create_uuids(parent=nil)
       Uuidable.create_uuids parent
     end
 
     ##
     # @see self.annotate_with_uuids!
-    def annotate_with_uuids!(dict, parent={})
+    def annotate_with_uuids!(dict, parent=nil)
       Uuidable.annotate_with_uuids! dict, parent
     end
 
@@ -62,7 +62,8 @@ module Util
     ##
     # Create a new set of uuids.
     #
-    def self.create_uuids(parent={})
+    def self.create_uuids(parent=nil)
+      parent ||= {}
       Hashie::Mash.new(
         uuid: create_coded_uuid,
         parent_uuid: parent[:uuid],
@@ -75,7 +76,8 @@ module Util
     ##
     # Set a dict's UUIDs with new UUIDs based on the parent's UUIDs.
     #
-    def self.annotate_with_uuids!(dict, parent={})
+    def self.annotate_with_uuids!(dict, parent=nil)
+      parent ||= {}
       uuids = self.create_uuids parent
       dict[:uuid] ||= uuids[:uuid]
       dict[:parent_uuid] ||= uuids[:parent_uuid]
