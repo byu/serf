@@ -33,8 +33,8 @@ module Util
 
     ##
     # @see self.annotate_with_uuids!
-    def annotate_with_uuids!(message, parent={})
-      Uuidable.annotate_with_uuids! message, parent
+    def annotate_with_uuids!(dict, parent={})
+      Uuidable.annotate_with_uuids! dict, parent
     end
 
     ##
@@ -73,13 +73,13 @@ module Util
     end
 
     ##
-    # Set a message's UUIDs with new UUIDs based on the parent's UUIDs.
+    # Set a dict's UUIDs with new UUIDs based on the parent's UUIDs.
     #
-    def self.annotate_with_uuids!(message, parent={})
+    def self.annotate_with_uuids!(dict, parent={})
       uuids = self.create_uuids parent
-      message[:uuid] ||= uuids[:uuid]
-      message[:parent_uuid] ||= uuids[:parent_uuid]
-      message[:origin_uuid] ||= uuids[:origin_uuid]
+      dict[:uuid] ||= uuids[:uuid]
+      dict[:parent_uuid] ||= uuids[:parent_uuid]
+      dict[:origin_uuid] ||= uuids[:origin_uuid]
       return nil
     end
 
