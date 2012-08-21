@@ -17,7 +17,7 @@ These gems are intended to run as standalone processes in a distributed
 manner.
 
 Fundamentally, a service creates an abstraction of:
-1. Messages
+1. Messages (with contextual headers)
 2. Handlers/Commands
 
 Messages are the representation of data, documents, etc that are
@@ -31,32 +31,6 @@ Messages may be documents that represent state or business data.
 Handlers are the code that is executed over Messages.
 Handlers may process Command Messages.
 Handlers may process observed Events that 3rd party services emit.
-
-Serf App and Channels
-=====================
-
-A Serf App is a Rack-like application that takes in an ENV hash with
-TWO important fields: message and context.
-
-The Message is the request or event. The data that is to be processed.
-
-The Context is meta data that needs to be taken into account about the
-processing of this data. The main important field may be a current user.
-Though, it is not explicitly defined.
-
-A request life cycle involves:
-1. Submitting a message and context to the SerfApp
-2. The Serf app will run middleware as defined by the DSL.
-3. Matched routes are found for the message and context.
-4. Run each route:
-  a. Run the policy chain for each route (This is for ACLs)
-  b. If no exception was raised, execute the route.
-5. Return all non-nil results to the caller.
-  a. Each result is a Message.
-
-If set in the DSL, the success and error responses may be published
-to a response and/or error channel.
-
 
 Service Libraries
 =================
@@ -88,37 +62,16 @@ Example
 
     require 'serf/builder'
     require 'serf/command'
-    require 'serf/middleware/uuid_tagger'
     require 'serf/util/options_extraction'
 
     # create a simple logger for this example
-    my_logger = Yell.new do |l|
-      l.level = :debug
-      l.adapter :datefile, 'my_production.log', :level => [:debug, :info, :warn]
-      l.adapter :datefile, 'my_error.log', :level => Yell.level.gte(:error)
-    end
-
-    # Helper class for this example to receive result or error messages
-    # and pipe it into our logger.
-    class MyChannel
-      def initialize(logger, error=false)
-        @logger = logger
-        @error = error
-      end
-      def push(message)
-        if @error
-          @logger.fatal "ERROR CHANNEL: #{message.to_json}"
-        else
-          @logger.debug "RESP  CHANNEL: #{message.to_json}"
-        end
-      end
-    end
+    my_logger = Yell.new STDOUT
 
     # my_lib/my_policy.rb
     class MyPolicy
 
-      def check!(message, context)
-        raise 'EXPECTED ERROR: Data is nil' if message[:data].nil?
+      def check!(headers, message)
+        raise 'Policy Error: User is nil' unless headers.user
       end
 
       def self.build(*args, &block)
@@ -140,30 +93,21 @@ Example
         @do_raise = opts :raises, false
       end
 
-      def call(request, context)
+      def call(headers, message)
         # Just our name to sort things out
 
         raise "EXPECTED ERROR: Forcing Error in #{name}" if do_raise
 
         # Do work Here...
-        # And return 0 or more messages as result. Nil is valid response.
-        return { kind: "#{name}_result", input: request }
+        # And return zero or one message as result. Nil is valid response.
+        return { kind: "#{name}_result", input: message }
       end
 
     end
 
     # Create a new builder for this serf app.
     builder = Serf::Builder.new do
-      # Include some middleware
-      use Serf::Middleware::Masherize
-      use Serf::Middleware::UuidTagger
-      #use Serf::Middleware::GirlFridayAsync
-
-      # Create response and error channels for the handler result messages.
-      response_channel MyChannel.new my_logger
-      error_channel MyChannel.new my_logger, true
-
-      # We pass in a logger to our Serf code: Serfer and Runners.
+      # We pass in a logger to our Serf code.
       logger my_logger
 
       # Here, we define a route.
@@ -183,57 +127,46 @@ Example
     app = builder.to_app
 
     # This will submit a 'my_message' message (as a hash) to the Serf App.
-    # NOTE: We should get an error message pushed to the error channel
-    #  because no 'data' field was put in my_message as required
-    #  And the Result should have a CaughtExceptionEvent.
+    # Missing data field will raise an error within the command, which
+    # will be caught by the serfer.
     my_logger.info 'Call 1: Start'
-    results = app.call(
-      message: {
-        kind: 'my_message'
-      },
-      context: nil)
+    results = app.call(nil, kind: 'my_message')
     my_logger.info "Call 1: #{results.size} #{results.to_json}"
 
     # Here is good result
     my_logger.info 'Call 2: Start'
-    results = app.call(
-      message: {
+    results = app.call({
+        user: 'user_info_1'
+      }, {
         kind: 'my_message',
-        data: '2'
-      },
-      context: nil)
+        data: 'abc'
+      })
     my_logger.info "Call 2: #{results.size} #{results.to_json}"
 
     # We should get two event messages in the results because we
     # mounted two commands to the other_message kind.
     my_logger.info 'Call 3: Start'
-    results = app.call(
-      message: {
+    results = app.call({
+        user: 'user_info_1'
+      }, {
         kind: 'other_message',
-        data: '3'
-      },
-      context: nil)
+        data: 'abc',
+      })
     my_logger.info "Call 3: #{results.size} #{results.to_json}"
 
     # This will match a regexp call
     my_logger.info 'Call 4: Start'
     results = app.call(
-      message: {
-        kind: 'events/my_event',
-        data: '4'
-      },
-      context: nil)
+      nil,
+      kind: 'events/my_event',
+      data: '4')
     my_logger.info "Call 4: #{results.size} #{results.to_json}"
 
     begin
       # Here, we're going to submit a message that we don't handle.
       # By default, an exception will be raised.
       my_logger.info 'Call 5: Start'
-      app.call(
-        message: {
-          kind: 'unhandled_message_kind'
-        },
-        context: nil)
+      app.call(nil, kind: 'unhandled_message_kind')
       my_logger.fatal 'OOOPS: Should not get here'
     rescue => e
       my_logger.info "Call 5: Caught in main: #{e.inspect}"

@@ -17,7 +17,7 @@ module Serf
   #       @model = opts :model, MyModel
   #     end
   #
-  #     def call(message, headers)
+  #     def call(headers, message)
   #       # Do something w/ message, opts and headers.
   #       item = @model.find message.model_id
   #       # create a new hashie of UUIDs, which we will use as the base
@@ -33,7 +33,7 @@ module Serf
   #   block = Proc.new {}
   #   message = ::Hashie::Mash.new
   #   headers = ::Hashie::Mash.new user: current_user
-  #   MyCommand.call(message, headers, *contructor_params, &block)
+  #   MyCommand.call(headers, message, *contructor_params, &block)
   #
   module Command
     extend ActiveSupport::Concern
@@ -43,7 +43,7 @@ module Serf
     include Serf::Util::OptionsExtraction
     include Serf::Util::ProtectedCall
 
-    def call(message, headers=nil, *args, &block)
+    def call(headers, message, *args, &block)
       raise NotImplementedError
     end
 
@@ -52,14 +52,14 @@ module Serf
       ##
       # Class method that both builds then executes the unit of work.
       #
-      # @param message the message
       # @param headers the headers about the message. Things like the
       #   requesting :user for ACL.
+      # @param message the message
       # @param *args remaining contructor arguments
       # @param &block the block to pass to constructor
       #
-      def call(message, headers=::Hashie::Mash.new, *args, &block)
-        self.build(*args, &block).call(message, headers)
+      def call(headers, message, *args, &block)
+        self.build(*args, &block).call(headers, message)
       end
 
       ##

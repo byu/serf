@@ -40,14 +40,14 @@ module Routing
     end
 
     ##
-    # @param [Hash] request The input message to match for routes.
+    # @param [Hash] message The input message to match for routes.
     # @return [Array] List of routes that matched.
     #
-    def resolve(request, headers)
+    def resolve(headers, message)
       resolved_routes = []
-      resolved_routes.concat routes.fetch(request[:kind]) { [] }
+      resolved_routes.concat routes.fetch(message[:kind]) { [] }
       matchers.each do |matcher|
-        resolved_routes.concat routes[matcher] if matcher === request
+        resolved_routes.concat routes[matcher] if matcher === message
       end
       return resolved_routes
     end

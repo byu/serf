@@ -1,3 +1,4 @@
+require 'serf/middleware/uuid_tagger'
 require 'serf/routing/route'
 require 'serf/routing/route_set'
 require 'serf/serfer'
@@ -63,6 +64,9 @@ module Serf
       # Current policies to be run (PRE-built)
       @policies = []
 
+      # Set the UuidTagger middleware for ALL Serf apps.
+      use Serf::Middleware::UuidTagger
+
       # configure based on a given block.
       instance_eval(&block) if block_given?
     end
@@ -99,8 +103,6 @@ module Serf
       @policies << proc { policy.build(*args, &block) }
     end
 
-    def response_channel(channel); @response_channel = channel; end
-    def error_channel(channel); @error_channel = channel; end
     def logger(logger); @logger = logger; end
 
     ##
@@ -152,8 +154,6 @@ module Serf
       # Create our serfer class
       app = serfer_factory.build(
         route_set: route_set,
-        response_channel: (@response_channel || Serf::Util::NullObject.new),
-        error_channel: (@error_channel || Serf::Util::NullObject.new),
         logger: (@logger || Serf::Util::NullObject.new))
 
       # We're going to inject middleware here.

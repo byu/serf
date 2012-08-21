@@ -15,9 +15,9 @@ module Routing
       @command = opts! :command
     end
 
-    def check_policies!(request, headers)
+    def check_policies!(headers, message)
       for policy in policies do
-        policy.check! request, headers
+        policy.check! headers, message
       end
     end
 
