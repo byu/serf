@@ -1,4 +1,5 @@
 require 'hashie'
+require 'ice_nine'
 
 require 'serf/error'
 require 'serf/errors/not_found'
@@ -38,8 +39,8 @@ module Serf
       # Thus we make new deep copies of the messages and headers.
       # We freeze them so policies and commands will be unable to cause
       # side effects in other policies and commands.
-      headers = Hashie::Mash.new(headers).freeze
-      message = Hashie::Mash.new(message).freeze
+      headers = IceNine.deep_freeze Hashie::Mash.new(headers)
+      message = IceNine.deep_freeze Hashie::Mash.new(message)
 
       # Resolve the routes that we want to run
       routes = route_set.resolve headers, message
