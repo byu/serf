@@ -181,6 +181,7 @@ Example
 
     require 'serf/builder'
     require 'serf/command'
+    require 'serf/middleware/parcel_tapper'
     require 'serf/util/options_extraction'
 
     # create a simple logger for this example
@@ -224,8 +225,29 @@ Example
 
     end
 
+    ##
+    # Make a simple example channel
+    class MyChannel
+
+      def initialize(name)
+        @logger = Yell.new STDOUT, format: "CHANNEL(#{name}): %m"
+      end
+
+      def push(parcel)
+        # nominally push this parcel into some messaging fabric
+        @logger.info parcel.to_json
+      end
+
+    end
+
     # Create a new builder for this serf app.
     builder = Serf::Builder.new do
+      use(
+        Serf::Middleware::ParcelTapper,
+        request_channel: MyChannel.new('request'),
+        response_channel: MyChannel.new('response'),
+        logger: MyChannel.new('response'))
+
       # We pass in a logger to our Serf code.
       logger my_logger
 
