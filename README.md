@@ -123,11 +123,13 @@ Keynote: Architecture the Lost Years, by Robert Martin
 Domain Driven Design by Eric Evans:
   * http://books.google.com/books?id=7dlaMs0SECsC&dq=domain+driven+design
 
-Enterprise Integration Patterns by Martin Fowler
+Patterns of Enterprise Application Architecture by Martin Fowler
   * http://martinfowler.com/books/eip.html
-  * http://www.eaipatterns.com/
   * Command (Unit of Work) Pattern
   * Event Sourcing
+
+Enterprise Integration Patterns by Hohpe and Woolf
+  * http://www.eaipatterns.com/
 
 DDD for Rails Developers Series:
   * http://rubysource.com/ddd-for-rails-developers-part-1-layered-architecture/
