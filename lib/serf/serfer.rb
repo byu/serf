@@ -46,7 +46,7 @@ module Serf
       routes = route_set.resolve headers, message
 
       # We raise an error if no routes were found.
-      raise Serf::Errors::NotFound unless routes.size > 0
+      raise Serf::Errors::NotFound, [headers, message] unless routes.size > 0
 
       # Execute each route, filtering out runs that return nil.
       results = routes.map { |route|
