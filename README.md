@@ -305,15 +305,10 @@ Example
       data: '4')
     my_logger.info "Call 4: #{results.size} #{results.to_json}"
 
-    begin
-      # Here, we're going to submit a message that we don't handle.
-      # By default, an exception will be raised.
-      my_logger.info 'Call 5: Start'
-      app.call(nil, kind: 'unhandled_message_kind')
-      my_logger.fatal 'OOOPS: Should not get here'
-    rescue => e
-      my_logger.info "Call 5: Caught in main: #{e.inspect}"
-    end
+    # Here, we're going to submit a message that we don't handle.
+    my_logger.info 'Call 5: Start'
+    results = app.call(nil, kind: 'unhandled_message_kind')
+    my_logger.info "Call 5: #{results.size} #{results.to_json}"
 
 
 Contributing to serf

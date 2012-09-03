@@ -19,6 +19,7 @@ module Serf
 
     attr_reader :route_set
     attr_reader :uuidable
+    attr_reader :not_found_kind
     attr_reader :policy_failure_kind
 
     def initialize(*args)
@@ -26,9 +27,12 @@ module Serf
 
       @route_set = opts! :route_set
       @uuidable = opts :uuidable, Serf::Util::Uuidable
+      @not_found_kind = opts(
+        :not_found_kind,
+        Serf::Errors::NotFound).to_s.underscore
       @policy_failure_kind = opts(
         :policy_failure_kind,
-        Serf::Errors::PolicyFailure)
+        Serf::Errors::PolicyFailure).to_s.underscore
     end
 
     ##
@@ -45,13 +49,22 @@ module Serf
       # Resolve the routes that we want to run
       routes = route_set.resolve headers, message
 
-      # We raise an error if no routes were found.
-      raise Serf::Errors::NotFound, [headers, message] unless routes.size > 0
-
-      # Execute each route, filtering out runs that return nil.
-      results = routes.map { |route|
-        run_route route, headers, message
-      }.select { |r| r }
+      # Figure out what we need to return
+      results = if routes.size > 0
+        # Execute each route, filtering out runs that return nil.
+        routes.map { |route|
+          run_route route, headers, message
+        }.select { |r| r }
+      else
+        # We return an array of a single parcel_pair
+        [[
+          uuidable.create_uuids(headers),
+          {
+            kind: not_found_kind,
+            request_kind: message.kind
+          }
+        ]]
+      end
 
       # return the resulting parcels
       return results
