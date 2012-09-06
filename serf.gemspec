@@ -22,9 +22,9 @@ Gem::Specification.new do |gem|
     'README.md'
   ]
 
-  gem.add_runtime_dependency(%q<activesupport>, ['>= 3.2.8'])
-  gem.add_runtime_dependency(%q<i18n>, ['>= 0.6.0'])
-  gem.add_runtime_dependency(%q<hashie>, ['>= 1.2.0'])
-  gem.add_runtime_dependency(%q<ice_nine>, ['>= 0.4.0'])
-  gem.add_runtime_dependency(%q<uuidtools>, ['>= 2.1.3'])
+  gem.add_runtime_dependency('activesupport', ['>= 3.2.8'])
+  gem.add_runtime_dependency('i18n', ['>= 0.6.0'])
+  gem.add_runtime_dependency('hashie', ['>= 1.2.0'])
+  gem.add_runtime_dependency('ice_nine', ['>= 0.4.0'])
+  gem.add_runtime_dependency('uuidtools', ['>= 2.1.3'])
 end
