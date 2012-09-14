@@ -17,8 +17,8 @@ module Util
     # A block wrapper to handle errors when executing a block.
     #
     def with_error_handling(error_kind=Serf::Error, *args, &block)
-      ok, results = pcall *args, &block
-      return ok, (ok ? results : handle_error(results, error_kind))
+      results, err = pcall *args, &block
+      return results, handle_error(err, error_kind)
     end
 
     ##
@@ -26,6 +26,9 @@ module Util
     # handling. By default, this method will create a new error event message.
     #
     def handle_error(e, error_kind)
+      # no error was passed, so do nothing.
+      return nil unless e
+
       # Get the nice string format of the error kind.
       unless error_kind.kind_of? String
         error_kind = error_kind.to_s.underscore

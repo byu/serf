@@ -45,10 +45,10 @@ module Middleware
 
     def push_response_channel(parcels)
       parcels.each do |parcel|
-        ok, err = pcall do
+        _, err = pcall do
           response_channel.push parcel
         end
-        logger.error err unless ok
+        logger.error err if err
       end
     end
 

@@ -86,17 +86,18 @@ module Serf
     #
     def run_route(route, headers, message)
       # 1. Check headers+message with the policies (RAISES ON FAILURE)
-      ok, response_message = with_error_handling policy_failure_kind do
+      _, err = with_error_handling policy_failure_kind do
         route.check_policies! headers, message
       end
 
       # 2. Execute command if no policy problems
       #   The response_message will be: result, error event or nil.
-      _, response_message = with_error_handling do
+      response_message, err = with_error_handling do
         route.execute! headers, message
-      end if ok
+      end unless err
 
-      # Return nil if we got nothing back from command execution
+      # Return nil if response is still nil, and no error
+      response_message ||= err
       return nil if response_message.nil?
 
       # 3. Create with the response headers
