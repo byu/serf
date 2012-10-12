@@ -27,21 +27,28 @@ Parcels
 -------
 
 A Parcel is just the package of Headers and Message. Serf's convention
-represents requests and responses as just Plain Old Hash Objects
+represents requests and responses as (mostly) just Plain Old Hash Objects
 (POHO as opposed to PORO) over the Boundaries (see Architecture Lost Years).
 This simplifies marshalling over the network. It also gives us easier
 semantics in defining Request and Responses without need of extra classes,
 code, etc.
 
-The Parcel in Ruby (Datastructure) is represented in two forms:
+The Parcel in Ruby (Datastructure) is represented in three forms:
 
-1. Parcel Pair - [headers, message], a 2 element tuple (Array).
-2. Parcel Hash - { headers: headers, message: message}, a 2 element Hash.
+1. Serf::Parcel object, subclass of Hashie::Dash.
+  a. An object that has hash-like access to headers and message,
+    accessible both as 'headers' or :headers.
+  b. An object w/ property accessors. `parcel.headers = {}`
+  c. A splat-able object.
+    Serf::Parcel.new {}, {}
+    headers, message = parcel_object
+2. Parcel Pair - [headers, message], a 2 element tuple (Array).
+3. Parcel Hash - { headers: headers, message: message}, a 2 element Hash.
 
 NOTE: Hashie::Mash is *Awesome*. (https://github.com/intridea/hashie)
 NOTE: Serf passes headers and message as frozen Hashie::Mash instances
   to Commands' call method.
-NOTE: Serf mainly deals with, internally, Parcels as Parcel Pairs.
+NOTE: Serf mainly deals with Serf::Parcels, returning instances as responses.
 
 *Messages* are the representation of a Business Request or Business Event.
 

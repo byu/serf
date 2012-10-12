@@ -1,5 +1,6 @@
 require 'serf/util/null_object'
 require 'serf/util/options_extraction'
+require 'serf/parcel'
 require 'serf/util/protected_call'
 
 module Serf
@@ -16,6 +17,7 @@ module Middleware
 
     attr_reader :app
     attr_reader :logger
+    attr_reader :parcel_builder
     attr_reader :request_channel
     attr_reader :response_channel
 
@@ -26,10 +28,13 @@ module Middleware
       @logger = opts(:logger) { Serf::Util::NullObject.new }
       @request_channel = opts(:request_channel) { Serf::Util::NullObject.new }
       @response_channel = opts(:response_channel) { Serf::Util::NullObject.new }
+      @parcel_builder = opts(
+        :parcel_builder,
+        Serf::Parcel)
     end
 
     def call(header, message)
-      push_request_channel [header, message]
+      push_request_channel parcel_builder.build(header, message)
       response_parcels = app.call header, message
       push_response_channel response_parcels
       return response_parcels

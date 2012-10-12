@@ -4,6 +4,7 @@ require 'ice_nine'
 require 'serf/error'
 require 'serf/errors/not_found'
 require 'serf/errors/policy_failure'
+require 'serf/parcel'
 require 'serf/util/error_handling'
 require 'serf/util/options_extraction'
 require 'serf/util/uuidable'
@@ -20,6 +21,7 @@ module Serf
     attr_reader :route_set
     attr_reader :uuidable
     attr_reader :not_found_kind
+    attr_reader :parcel_builder
     attr_reader :policy_failure_kind
 
     def initialize(*args)
@@ -33,6 +35,9 @@ module Serf
       @policy_failure_kind = opts(
         :policy_failure_kind,
         Serf::Errors::PolicyFailure).to_s.underscore
+      @parcel_builder = opts(
+        :parcel_builder,
+        Serf::Parcel)
     end
 
     ##
@@ -56,14 +61,14 @@ module Serf
           run_route route, headers, message
         }.select { |r| r }
       else
-        # We return an array of a single parcel_pair
-        [[
+        # We return an array of a single parcel
+        [parcel_builder.build(
           uuidable.create_uuids(headers),
           {
             kind: not_found_kind,
             request_kind: message.kind
-          }
-        ]]
+          })
+        ]
       end
 
       # return the resulting parcels
@@ -104,8 +109,8 @@ module Serf
       #   NOTE: We are guaranteed that headers is a Hashie::Mash.
       response_headers = uuidable.create_uuids headers
 
-      # 4. Return the response headers and message as a parcel pair
-      return [response_headers, response_message]
+      # 4. Return the response headers and message as a parcel
+      return parcel_builder.build response_headers, response_message
     end
 
   end
