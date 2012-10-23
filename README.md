@@ -7,7 +7,7 @@ Build your System with Commands, Event Sourcing and Message Passing.
 Commands
 --------
 
-The Unit of Work to be done. This takes in a request, represented
+The piece of work to be done. This takes in a request, represented
 by a "Message", and returns an "Event" as its result. The command class
 is the "Interactor" or "Domain Controller" with respect to performing
 Domain Layer business logic in coordinating and interacting with
