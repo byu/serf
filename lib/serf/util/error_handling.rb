@@ -1,5 +1,3 @@
-require 'active_support/core_ext/string/inflections'
-
 require 'serf/error'
 require 'serf/util/protected_call'
 
@@ -31,7 +29,7 @@ module Util
 
       # Get the nice string format of the error kind.
       unless error_kind.kind_of? String
-        error_kind = error_kind.to_s.underscore
+        error_kind = error_kind.to_s
       end
 
       # Return a simple error event message

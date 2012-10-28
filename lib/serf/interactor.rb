@@ -1,5 +1,3 @@
-require 'active_support/concern'
-
 require 'serf/util/options_extraction'
 require 'serf/util/protected_call'
 require 'serf/util/uuidable'
@@ -7,10 +5,13 @@ require 'serf/util/uuidable'
 module Serf
 
   ##
-  # A base class for Serf users to implement a Command pattern.
+  # A base module so Interactors are implemented with a uniform "interface".
   #
-  #   class MyCommand
-  #     include Serf::Command
+  #   require 'hashie'
+  #   require 'serf/interactor'
+  #
+  #   class MyInteractor
+  #     include Serf::Interactor
   #
   #     def initialize(*contructor_params, &block)
   #       # Do some validation here, or extra parameter setting with the args
@@ -19,11 +20,14 @@ module Serf
   #
   #     def call(headers, message)
   #       # Do something w/ message, opts and headers.
+  #       # Our headers and message are the simple data structures
+  #       # for the Interactor's "Request".
+  #
   #       item = @model.find message.model_id
-  #       # create a new hashie of UUIDs, which we will use as the base
-  #       # hash of our response
-  #       response = create_uuids message
-  #       response.kind = 'my_command/events/did_something'
+  #
+  #       # Make a simple data structure as the Interactor "Response".
+  #       response = Hashie::Mash.new
+  #       response.kind = 'my_app/events/did_something'
   #       response.item = item
   #       return response
   #     end
@@ -33,15 +37,17 @@ module Serf
   #   block = Proc.new {}
   #   message = ::Hashie::Mash.new
   #   headers = ::Hashie::Mash.new user: current_user
-  #   MyCommand.call(headers, message, *contructor_params, &block)
+  #   MyInteractor.call(headers, message, *contructor_params, &block)
   #
-  module Command
-    extend ActiveSupport::Concern
-
+  module Interactor
     # Including Serf::Util::*... Order matters, kind of, here.
     include Serf::Util::Uuidable
     include Serf::Util::OptionsExtraction
     include Serf::Util::ProtectedCall
+
+    def self.included(base)
+      base.extend(ClassMethods)
+    end
 
     def call(headers, message, *args, &block)
       raise NotImplementedError
@@ -50,7 +56,7 @@ module Serf
     module ClassMethods
 
       ##
-      # Class method that both builds then executes the unit of work.
+      # Class method that both builds then executes the interactor.
       #
       # @param headers the headers about the message. Things like the
       #   requesting :user for ACL.
@@ -64,7 +70,7 @@ module Serf
 
       ##
       # Factory build method that creates an object of the implementing
-      # class' unit of work with the given parameters. By default,
+      # interactor with the given parameters. By default,
       # This just calls the class new method.
       #
       def build(*args, &block)

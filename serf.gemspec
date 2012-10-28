@@ -6,8 +6,8 @@ Gem::Specification.new do |gem|
   gem.version     = Serf::Version::STRING
   gem.authors     = ['Benjamin Yu']
   gem.email       = 'benjaminlyu@gmail.com'
-  gem.description = 'Assisting CQRS'
-  gem.summary     = 'Assisting CQRS'
+  gem.description = 'Interactors with policy protection'
+  gem.summary     = 'Interactors with policy protection'
   gem.homepage    = 'http://github.com/byu/serf'
   gem.licenses    = ['Apache 2.0']
 
@@ -22,8 +22,6 @@ Gem::Specification.new do |gem|
     'README.md'
   ]
 
-  gem.add_runtime_dependency('activesupport', ['>= 3.2.8'])
-  gem.add_runtime_dependency('i18n', ['>= 0.6.0'])
   gem.add_runtime_dependency('hashie', ['>= 1.2.0'])
   gem.add_runtime_dependency('ice_nine', ['>= 0.4.0'])
   gem.add_runtime_dependency('uuidtools', ['>= 2.1.3'])
