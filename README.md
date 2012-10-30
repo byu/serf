@@ -252,6 +252,15 @@ Example
       })
     my_logger.info "Call 4: #{results.size} #{results.to_json}"
 
+    # Here we use the Error handler to get error parcels
+    app = Serf::Middleware::ErrorHandler.new serfer
+    results = app.call({
+        user: 'user_info_1'
+      }, {
+        raise_an_error: true
+      })
+    my_logger.info "Call 5: #{results.size} #{results.to_json}"
+
 
 Contributing
 ============
