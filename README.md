@@ -175,6 +175,7 @@ Example
     require 'yell'
 
     require 'serf/interactor'
+    require 'serf/middleware/error_handler'
     require 'serf/middleware/uuid_tagger'
     require 'serf/serfer'
 
@@ -202,7 +203,10 @@ Example
         raise 'Error' if message.raise_an_error
 
         # And return a message as result. Nil is valid response.
-        return 'my_lib/events/success_event', { success: true }
+        return { success: true }, 'my_lib/events/success_event'
+
+        # Optionally just return the message w/o a tagged kind
+        #return { success: true }
       end
 
     end

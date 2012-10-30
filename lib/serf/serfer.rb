@@ -47,7 +47,7 @@ module Serf
       check_policies! headers, message
 
       # 2. Execute interactor if no policy problems
-      response_kind, response_message = interactor.call headers, message
+      response_message, response_kind = interactor.call headers, message
 
       # 3. Create the response headers
       #   NOTE: We are guaranteed that headers is a Hashie::Mash.
