@@ -1,27 +1,28 @@
 serf
 ====
 
-Build your System with Commands, Event Sourcing and Message Passing.
+Code your Interactors with policy protection.
 
 
-Commands
---------
+Interactors
+-----------
 
 The piece of work to be done. This takes in a request, represented
-by a "Message", and returns an "Event" as its result. The command class
-is the "Interactor" or "Domain Controller" with respect to performing
+by a "Message", and returns an "Event" as its result. The Interactor
+is the "Domain Controller" with respect to performing
 Domain Layer business logic in coordinating and interacting with
 the Domain Layer's Entities (Value Objects and Entity Gateways).
 
-1. Include the "Serf::Command" module in your class.
+1. Include the "Serf::Interactor" module in your class.
 2. Implement the 'call(headers, message)' method.
-3. Return nil or a Message (Hashie::Mash is recommended).
+3. Return the tuple: (kind, message)
+  a. The kind is the string representation of the message type.
+  b. Hashie::Mash is recommended for the message, nil is acceptable
 
 Notes:
 
-* Exceptions raised out of the command are then caught by Serf and
-  transformed into a generic CaughtExceptionEvent Message.
-* Multiple Commands may be triggered to execute from a single request Message.
+* Exceptions raised out of the interactor are then caught by Serf and
+  tagged with the Serf::Error module.
 
 Parcels
 -------
@@ -55,13 +56,6 @@ NOTE: Serf mainly deals with Serf::Parcels, returning instances as responses.
 In the parcel, the message is the business data. It specifies what
 business work needs to be done, or what business was done.
 
-  REQUIRED: Required by all messages is the 'kind' field.
-
-The "kind" field identifies the ontological meaning of the message, which
-allows Serf to properly pass the message onto the proper Command.
-The convention is 'mymodule/requests/my_business_equest' for Requests,
-and 'mymodule/events/my_business_event' for Events.
-
   RECOMMENDED: Use JSON Schema to validate the structure of a message.
     https://github.com/hoxworth/json-schema
     This can be implemented in the 'Policy' chain.
@@ -71,6 +65,13 @@ and 'mymodule/events/my_business_event' for Events.
 Headers provide information that would assist in processing, tracking
 a Message. But does not provide business relevant information to
 the Request or Event Message.
+
+  RECOMMENDED: Recommended to be placed in headers is the 'kind' field.
+
+The "kind" field identifies the ontological meaning of the message, which
+allows Serf to properly pass the message onto the proper Command.
+The convention is 'mymodule/requests/my_business_equest' for Requests,
+and 'mymodule/events/my_business_event' for Events.
 
 Examples are:
 * UUIDs to track request and events, providing a sequential order of
@@ -101,24 +102,8 @@ Policies only need to implement a single method:
     def check!(headers, message)
       raise 'Failure' # To fail the policy, raise an error.
     end
-  
-Channels
---------
 
-A simple Serf App is a Rack-like app that takes Requests, executes Commands
-and returns Events. Channels provide the abstraction for Message Passing
-that will feed Events back into Event Handlers (More Serf App Commands),
-which can spin off additional business Requests (back into other Serf Apps).
-(See CQRS).
-
-Channels just need to implement the following method:
-
-    def push(parcel)
-    end
-
-The parcel is a "Parcel Pair". The channel is responsible for serializing
-the parcel into a wire-format to transfer over the network to receiving
-Serf Apps.
+  RECOMMENDED: Use `Serf::Errors::PolicyFailure` error type.
 
 
 References
@@ -184,6 +169,7 @@ The Domain Layer (from DDD):
 Example
 =======
 
+
     # Require our libraries
     require 'json'
     require 'yell'
@@ -216,7 +202,7 @@ Example
         raise 'Error' if message.raise_an_error
 
         # And return a message as result. Nil is valid response.
-        return { success: true }
+        return 'my_lib/events/success_event', { success: true }
       end
 
     end
@@ -225,14 +211,19 @@ Example
     serfer = Serf::Serfer.build(
       interactor: MyInteractor.build,
       policy_chain: [
+        MyPolicy.build,
         MyPolicy.build
       ])
 
     # This will submit a 'my_message' message (as a hash) to Serfer.
     # Missing data field will raise an error within the interactor, which
     # will be caught by the serfer.
-    results = serfer.call(nil, nil)
-    my_logger.info "Call 1: #{results.size} #{results.to_json}"
+    begin
+      results = serfer.call(nil, nil)
+      my_logger.info "FAILED: Unexpected Success"
+    rescue => e
+      my_logger.info "Call 1: Expected Error #{e}"
+    end
 
     # Here is good result
     results = serfer.call({
@@ -242,12 +233,16 @@ Example
     my_logger.info "Call 2: #{results.size} #{results.to_json}"
 
     # Here is an error in interactor
-    results = serfer.call({
-        user: 'user_info_1'
-      }, {
-        raise_an_error: true
-      })
-    my_logger.info "Call 3: #{results.size} #{results.to_json}"
+    begin
+      results = serfer.call({
+          user: 'user_info_1'
+        }, {
+          raise_an_error: true
+        })
+      my_logger.info "FAILED: Unexpected Success"
+    rescue => e
+      my_logger.info "Call 3: Expected Error #{e}"
+    end
 
     # Here is success with a request with UUID tagged.
     app = Serf::Middleware::UuidTagger.new serfer
@@ -256,6 +251,7 @@ Example
       }, {
       })
     my_logger.info "Call 4: #{results.size} #{results.to_json}"
+
 
 Contributing
 ============

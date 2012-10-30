@@ -27,9 +27,9 @@ module Serf
   #
   #       # Make a simple data structure as the Interactor "Response".
   #       response = Hashie::Mash.new
-  #       response.kind = 'my_app/events/did_something'
   #       response.item = item
-  #       return response
+  #       # Return the response 'kind' and the response data.
+  #       return 'my_app/events/did_something', response
   #     end
   #   end
   #
