@@ -41,7 +41,6 @@ module Serf
   #
   module Interactor
     # Including Serf::Util::*... Order matters, kind of, here.
-    include Serf::Util::Uuidable
     include Serf::Util::OptionsExtraction
     include Serf::Util::ProtectedCall
 

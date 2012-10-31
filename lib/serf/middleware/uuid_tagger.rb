@@ -20,7 +20,7 @@ module Middleware
     def initialize(app, *args)
       extract_options! args
       @app = app
-      @uuidable = opts :uuidable, Serf::Util::Uuidable
+      @uuidable = opts(:uuidable) { Serf::Util::Uuidable.new }
     end
 
     def call(headers, message)

@@ -30,7 +30,7 @@ module Middleware
       @parcel_builder = opts(
         :parcel_builder,
         Serf::Parcel)
-      @uuidable = opts :uuidable, Serf::Util::Uuidable
+      @uuidable = opts(:uuidable) { Serf::Util::Uuidable.new }
     end
 
     def call(headers, message)

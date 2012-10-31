@@ -2,6 +2,8 @@ require 'base64'
 require 'hashie'
 require 'uuidtools'
 
+require 'serf/util/options_extraction'
+
 module Serf
 module Util
 
@@ -11,30 +13,14 @@ module Util
   # 1. Primarily to create and parse 'coded' UUIDs, which are just
   #   base64 encoded UUIDs without trailing '='.
   #
-  module Uuidable
+  class Uuidable
+    include Serf::Util::OptionsExtraction
 
-    ##
-    # @see self.create_coded_uuid
-    def create_coded_uuid
-      Uuidable.create_coded_uuid
-    end
+    attr_reader :uuid_tool
 
-    ##
-    # @see self.parse_coded_uuid
-    def parse_coded_uuid(coded_uuid)
-      Uuidable.parse_coded_uuid coded_uuid
-    end
-
-    ##
-    # @see self.create_uuids
-    def create_uuids(parent=nil)
-      Uuidable.create_uuids parent
-    end
-
-    ##
-    # @see self.annotate_with_uuids!
-    def annotate_with_uuids!(dict, parent=nil)
-      Uuidable.annotate_with_uuids! dict, parent
+    def initialize(*args)
+      extract_options! args
+      @uuid_tool = opts :uuid_tool, UUIDTools::UUID
     end
 
     ##
@@ -42,27 +28,27 @@ module Util
     #
     # NOTE: UUIDTools TimeStamp code creates a UTC based timestamp UUID.
     #
-    def self.create_coded_uuid
+    def create_coded_uuid
       # All raw UUIDs are 16 bytes long. Base64 lengthens the string to
       # 24 bytes long. We chomp off the last two equal signs '==' to
       # trim the string length to 22 bytes. This gives us an overhead
       # of an extra 6 bytes over raw UUID, but with the readability
       # benefit. And saves us 14 bytes of size from the 'standard'
       # string hex representation of UUIDs.
-      Base64.urlsafe_encode64(UUIDTools::UUID.timestamp_create.raw).chomp('==')
+      Base64.urlsafe_encode64(uuid_tool.timestamp_create.raw).chomp('==')
     end
 
     ##
     # @param coded_uuid a coded uuid to parse.
     #
-    def self.parse_coded_uuid(coded_uuid)
-      UUIDTools::UUID.parse_raw Base64.urlsafe_decode64("#{coded_uuid}==")
+    def parse_coded_uuid(coded_uuid)
+      uuid_tool.parse_raw Base64.urlsafe_decode64("#{coded_uuid}==")
     end
 
     ##
     # Create a new set of uuids.
     #
-    def self.create_uuids(parent=nil)
+    def create_uuids(parent=nil)
       parent ||= {}
       Hashie::Mash.new(
         uuid: create_coded_uuid,
@@ -76,7 +62,7 @@ module Util
     ##
     # Set a dict's UUIDs with new UUIDs based on the parent's UUIDs.
     #
-    def self.annotate_with_uuids!(dict, parent=nil)
+    def annotate_with_uuids!(dict, parent=nil)
       parent ||= {}
       uuids = self.create_uuids parent
       dict[:uuid] ||= uuids[:uuid]
