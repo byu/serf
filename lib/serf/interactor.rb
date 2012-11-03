@@ -1,6 +1,5 @@
 require 'serf/util/options_extraction'
 require 'serf/util/protected_call'
-require 'serf/util/uuidable'
 
 module Serf
 
@@ -18,10 +17,9 @@ module Serf
   #       @model = opts :model, MyModel
   #     end
   #
-  #     def call(headers, message)
-  #       # Do something w/ message, opts and headers.
-  #       # Our headers and message are the simple data structures
-  #       # for the Interactor's "Request".
+  #     def call(message)
+  #       # Do something w/ the message and opts.
+  #       # Simple data structures for the Interactor's "Request".
   #
   #       item = @model.find message.model_id
   #
@@ -29,18 +27,16 @@ module Serf
   #       response = Hashie::Mash.new
   #       response.item = item
   #       # Return the response 'kind' and the response data.
-  #       return 'my_app/events/did_something', response
+  #       return response, 'my_app/events/did_something'
   #     end
   #   end
   #
   #   constructor_params = [1, 2, 3, 4, etc]
   #   block = Proc.new {}
-  #   message = ::Hashie::Mash.new
-  #   headers = ::Hashie::Mash.new user: current_user
-  #   MyInteractor.call(headers, message, *contructor_params, &block)
+  #   message = ::Hashie::Mash.new model_id: 1
+  #   response, kind = MyInteractor.call(message, *contructor_params, &block)
   #
   module Interactor
-    # Including Serf::Util::*... Order matters, kind of, here.
     include Serf::Util::OptionsExtraction
     include Serf::Util::ProtectedCall
 
@@ -48,7 +44,7 @@ module Serf
       base.extend(ClassMethods)
     end
 
-    def call(headers, message, *args, &block)
+    def call(*args, &block)
       raise NotImplementedError
     end
 
@@ -57,14 +53,12 @@ module Serf
       ##
       # Class method that both builds then executes the interactor.
       #
-      # @param headers the headers about the message. Things like the
-      #   requesting :user for ACL.
-      # @param message the message
+      # @param message the raw simple data structure of the request
       # @param *args remaining contructor arguments
       # @param &block the block to pass to constructor
       #
-      def call(headers, message, *args, &block)
-        self.build(*args, &block).call(headers, message)
+      def call(message, *args, &block)
+        build(*args, &block).call(message)
       end
 
       ##

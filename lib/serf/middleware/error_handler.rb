@@ -1,7 +1,6 @@
 require 'hashie'
 
-require 'serf/error'
-require 'serf/parcel'
+require 'serf/parcel_builder'
 require 'serf/util/error_handling'
 require 'serf/util/uuidable'
 
@@ -16,6 +15,7 @@ module Middleware
     include Serf::Util::ErrorHandling
     include Serf::Util::OptionsExtraction
 
+    attr_reader :app
     attr_reader :parcel_builder
     attr_reader :uuidable
 
@@ -27,24 +27,22 @@ module Middleware
       @app = app
 
       # Tunable knobs
-      @parcel_builder = opts(
-        :parcel_builder,
-        Serf::Parcel)
+      @parcel_builder = opts(:parcel_builder) { Serf::ParcelBuilder.new }
       @uuidable = opts(:uuidable) { Serf::Util::Uuidable.new }
     end
 
-    def call(headers, message)
+    def call(parcel)
       # Attempt to execute the app, catching errors
-      parcel, error_message = with_error_handling do
-        @app.call headers, message
+      response_parcel, error_message = with_error_handling do
+        app.call parcel
       end
 
       # Return on success
-      return parcel if parcel
+      return response_parcel if response_parcel
 
       # We got an error message instead, so build out the headers
       # and return the parcel.
-      error_headers = uuidable.create_uuids headers
+      error_headers = uuidable.create_uuids parcel[:headers]
       return parcel_builder.build error_headers, error_message
     end
 

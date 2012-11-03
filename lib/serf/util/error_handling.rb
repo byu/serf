@@ -1,4 +1,3 @@
-require 'serf/error'
 require 'serf/util/protected_call'
 
 module Serf
