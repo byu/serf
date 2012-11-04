@@ -3,6 +3,13 @@ serf
 
 Code your Interactors with policy protection.
 
+Serf Links
+----------
+
+* Source: https://github.com/byu/serf
+* Continuous Integration: https://travis-ci.org/byu/serf
+* RubyGems: http://rubygems.org/gems/serf
+* RubyDocs: http://rubydoc.info/gems/serf
 
 Interactors
 -----------
