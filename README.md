@@ -27,6 +27,32 @@ the Domain Layer's Entities (Value Objects and Entity Gateways).
   b. The kind is the string representation of the message type,
     It is optional.
 
+Example:
+
+    require 'hashie'
+
+    class MyInteractor
+
+      def initialize(*contructor_params, &block)
+        # Do some validation here, or extra parameter setting with the args
+        @model = opts :model, MyModel
+      end
+
+      def call(message)
+        # Do something w/ the message and opts.
+        # Simple data structures for the Interactor's "Request".
+
+        item = @model.find message.model_id
+
+        # Make a simple data structure as the Interactor "Response".
+        response = Hashie::Mash.new
+        response.item = item
+        # Return the response 'kind' and the response data.
+        return response, 'my_app/events/did_something'
+      end
+    end
+
+
 Parcels
 -------
 
@@ -37,14 +63,13 @@ This simplifies marshalling over the network. It also gives us easier
 semantics in defining Request and Responses without need of extra classes,
 code, etc.
 
-The Parcel in Ruby (Datastructure) is represented in three forms:
+The Parcel in Ruby (Datastructure) is represented simply as:
 
-1. Parcel Hash - { headers: headers, message: message}, a 2 element Hash.
-2. Parcel Pair - [headers, message], a 2 element tuple (Array).
+* A 2 element Hash: { headers: headers, message: message}.
 
 NOTE: Hashie::Mash is *Awesome*. (https://github.com/intridea/hashie)
-NOTE: Serf passes headers and message as frozen Hashie::Mash instances
-  to Commands' call method.
+NOTE: Serf passes the parcel as frozen Hashie::Mash instances
+  to Interactor' call method by default.
 
 *Messages* are the representation of a Business Request or Business Event.
 
@@ -167,13 +192,11 @@ The Domain Layer (from DDD):
 Example
 =======
 
-
     # Require our libraries
     require 'json'
     require 'yell'
 
     require 'serf/builder'
-    require 'serf/interactor'
 
     # create a simple logger for this example
     my_logger = Yell.new STDOUT
@@ -185,15 +208,10 @@ Example
         raise 'Policy Error: User is nil' unless parcel.headers.user
       end
 
-      def self.build(*args, &block)
-        new *args, &block
-      end
-
     end
 
     # my_lib/my_interactor.rb
     class MyInteractor
-      include Serf::Interactor
 
       def call(message)
         raise 'Error' if message.raise_an_error
@@ -209,9 +227,9 @@ Example
 
     # Create a new builder for this serf app.
     app = Serf::Builder.new(
-      interactor: MyInteractor.build,
+      interactor: MyInteractor.new,
       policy_chain: [
-        MyPolicy.build
+        MyPolicy.new
       ]).to_app
 
     # This will submit a 'my_message' message (as a hash) to Serfer.
