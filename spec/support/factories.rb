@@ -23,4 +23,10 @@ FactoryGirl.define do
   factory :random_message, class: Hashie::Mash do
     data { generate(:random_string) }
   end
+
+  factory :random_options, class: Hashie::Mash do
+    option_a { generate(:random_string) }
+    option_b { generate(:random_string) }
+    option_c { generate(:random_string) }
+  end
 end
