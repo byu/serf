@@ -16,7 +16,7 @@ describe Serf::ParcelBuilder do
 
     it 'returns a Hashie' do
       parcel = subject.build
-      parcel.is_a?(Hashie::Mash).should be_true
+      parcel.should be_a_kind_of(Hashie::Mash)
     end
 
     it 'sets default parcel headers' do
@@ -37,8 +37,8 @@ describe Serf::ParcelBuilder do
 
     it 'will coerce headers and message into Hashie::Mash' do
       parcel = subject.build nil, nil
-      parcel[:headers].is_a?(Hashie::Mash).should be_true
-      parcel[:message].is_a?(Hashie::Mash).should be_true
+      parcel[:headers].should be_a_kind_of(Hashie::Mash)
+      parcel[:message].should be_a_kind_of(Hashie::Mash)
     end
 
   end

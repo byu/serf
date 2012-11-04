@@ -11,7 +11,7 @@ describe Serf::Middleware::ParcelMasher do
     it 'should Hashie::Mash the parcel' do
       parcel = nil
       app = described_class.new proc { |parcel|
-        parcel.is_a?(Hashie::Mash).should be_true
+        parcel.should be_a_kind_of(Hashie::Mash)
       }
       app.call parcel
     end
@@ -19,8 +19,8 @@ describe Serf::Middleware::ParcelMasher do
     it 'should autocreate headers and message' do
       parcel = nil
       app = described_class.new proc { |parcel|
-        parcel.headers.is_a?(Hashie::Mash).should be_true
-        parcel.message.is_a?(Hashie::Mash).should be_true
+        parcel.headers.should be_a_kind_of(Hashie::Mash)
+        parcel.message.should be_a_kind_of(Hashie::Mash)
       }
       app.call parcel
     end
