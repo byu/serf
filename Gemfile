@@ -14,15 +14,15 @@ group :development, :test do
   gem 'guard-rspec'
   gem 'rspec'
   gem 'yard'
-  gem 'simplecov'
+  gem 'simplecov', require: false
 
   # Required to support testing
   gem 'factory_girl'
 
   # Required by Guard
-  gem 'rb-inotify', :require => false
-  gem 'rb-fsevent', :require => false
-  gem 'rb-fchange', :require => false
+  gem 'rb-inotify', require: false
+  gem 'rb-fsevent', require: false
+  gem 'rb-fchange', require: false
 
   # Required by our Specs
   gem 'json-schema'
