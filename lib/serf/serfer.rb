@@ -45,10 +45,6 @@ module Serf
       return parcel_builder.build response_headers, response_message
     end
 
-    def self.build(*args, &block)
-      new *args, &block
-    end
-
   end
 
 end
