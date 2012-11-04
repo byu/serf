@@ -39,7 +39,7 @@ module Serf
 
       # 2. Create the response headers
       response_headers = uuidable.create_uuids headers
-      response_headers.kind = response_kind
+      response_headers[:kind] = response_kind
 
       # 3. Return the response headers and message as a parcel
       return parcel_builder.build response_headers, response_message
