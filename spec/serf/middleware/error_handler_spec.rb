@@ -33,7 +33,7 @@ describe Serf::Middleware::ErrorHandler do
         })
       }
       let(:response_parcel) {
-        FactoryGirl.create :random_response_parcel
+        FactoryGirl.create :random_parcel
       }
 
       it 'returns a good response parcel' do
