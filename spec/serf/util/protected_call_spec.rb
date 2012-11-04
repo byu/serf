@@ -21,7 +21,7 @@ describe Serf::Util::ProtectedCall do
     }
 
     it 'returns a good response parcel' do
-      result, error = subject.with_error_handling do
+      result, error = subject.pcall do
         response_parcel
       end
       result.should == response_parcel
