@@ -14,4 +14,13 @@ FactoryGirl.define do
       some_data: generate(:random_string)
     }}
   end
+
+  factory :random_headers, class: Hashie::Mash do
+    uuid { generate(:random_string) }
+    kind { generate(:random_string) }
+  end
+
+  factory :random_message, class: Hashie::Mash do
+    data { generate(:random_string) }
+  end
 end
