@@ -4,8 +4,8 @@ require 'serf/errors/policy_failure'
 
 describe Serf::Errors::PolicyFailure do
 
-  it 'is kind of RuntimeError' do
-    subject.kind_of? RuntimeError
-  end
+  it {
+    should be_a_kind_of(RuntimeError)
+  }
 
 end
