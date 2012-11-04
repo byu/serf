@@ -43,6 +43,7 @@ module Middleware
       # We got an error message instead, so build out the headers
       # and return the parcel.
       error_headers = uuidable.create_uuids parcel[:headers]
+      error_headers[:kind] = 'serf/events/caught_error'
       return parcel_builder.build error_headers, error_message
     end
 
