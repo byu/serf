@@ -59,18 +59,6 @@ module Util
           parent[:uuid]))
     end
 
-    ##
-    # Set a dict's UUIDs with new UUIDs based on the parent's UUIDs.
-    #
-    def annotate_with_uuids!(dict, parent=nil)
-      parent ||= {}
-      uuids = self.create_uuids parent
-      dict[:uuid] ||= uuids[:uuid]
-      dict[:parent_uuid] ||= uuids[:parent_uuid]
-      dict[:origin_uuid] ||= uuids[:origin_uuid]
-      return nil
-    end
-
   end
 
 end
