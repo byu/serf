@@ -1,87 +1,48 @@
 require 'hashie'
 
-require 'serf/error'
-require 'serf/errors/not_found'
-require 'serf/util/error_handling'
-require 'serf/util/null_object'
+require 'serf/parcel_builder'
+require 'serf/util/options_extraction'
+require 'serf/util/uuidable'
 
 module Serf
 
   ##
-  # Class to drive the command handler execution, error handling, etc
-  # of received messages.
+  # Class to drive the Interactor execution.
+  #
   class Serfer
-    include Serf::Util::ErrorHandling
+    include Serf::Util::OptionsExtraction
 
-    attr_reader :route_set
-    attr_reader :response_channel
-    attr_reader :error_channel
-    attr_reader :logger
+    attr_reader :interactor
+    attr_reader :parcel_builder
+    attr_reader :uuidable
 
-    def initialize(*args)
+    def initialize(interactor, *args)
       extract_options! args
 
-      @route_set = opts! :route_set
-      @response_channel = opts(:response_channel) { Serf::Util::NullObject }
-      @error_channel = opts(:error_channel) { Serf::Util::NullObject }
-      @logger = opts(:logger) { Serf::Util::NullObject }
+      # How to and when to handle requests
+      @interactor = interactor
+
+      # Tunable knobs
+      @parcel_builder = opts(:parcel_builder) { Serf::ParcelBuilder.new }
+      @uuidable = opts(:uuidable) { Serf::Util::Uuidable.new }
     end
 
     ##
-    # Rack-like call to run a set of handlers for a message
+    # Rack-like call to run the Interactor's use-case.
     #
-    def call(env)
-      env = Hashie::Mash.new env unless env.is_a? Hashie::Mash
+    def call(parcel)
+      headers = parcel[:headers]
+      message = parcel[:message]
 
-      # We normalize by making the request a Hashie Mash
-      message = Hashie::Mash.new env.message
-      context = Hashie::Mash.new env.context
+      # 1. Execute interactor
+      response_message, response_kind = interactor.call message
 
-      # Resolve the routes that we want to run
-      routes = route_set.resolve message, context
+      # 2. Create the response headers
+      response_headers = uuidable.create_uuids headers
+      response_headers[:kind] = response_kind
 
-      # We raise an error if no routes were found.
-      raise Serf::Errors::NotFound unless routes.size > 0
-
-      # For each route, we're going to execute
-      results = routes.map { |route|
-        # 1. Check request+context with the policies (RAISE)
-        # 2. Execute command (RETURNS Hash)
-        ok, res = with_error_handling(
-            message: message,
-            options: context) do
-          route.check_policies! message, context
-          route.execute! message, context
-        end
-        # Return the run_results as result of this block.
-        res
-      }.flatten.select { |r| r }
-      push_results results, context
-      return results
-    rescue => e
-      e.extend(Serf::Error)
-      raise e
-    end
-
-    def self.build(*args, &block)
-      new *args, &block
-    end
-
-    private
-
-    ##
-    # Loop over the results and push them to the response channel.
-    # Any error in pushing individual messages will result in
-    # a log event and an error channel event.
-    def push_results(results, context)
-      results.each do |result|
-        with_error_handling(result) do
-          response_channel.push(
-            message: result,
-            context: context)
-        end
-      end
-      return nil
+      # 3. Return the response headers and message as a parcel
+      return parcel_builder.build response_headers, response_message
     end
 
   end

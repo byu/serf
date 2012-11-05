@@ -24,9 +24,9 @@ module Util
     # @return boolean success and the block's (or caught exception) results.
     #
     def pcall(*args)
-      return true, yield(*args)
+      return yield(*args), nil
     rescue => e
-      return false, e
+      return nil, e
     end
     alias_method :protected_call, :pcall
 

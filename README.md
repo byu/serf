@@ -1,82 +1,193 @@
 serf
 ====
 
-Serf is simply a Rack-like library that, when called, routes received
-messages (requests or events) to "Command" handlers.
+Code your Interactors with policy protection.
 
-The pattern of Command objects and messaging gives us nice primatives
-for Event-Driven Service Oriented Architecture in combination with
-the Command Query Responsibility Separation pattern.
+Serf Links
+----------
 
-Philosophy
+* Source: https://github.com/byu/serf
+* Continuous Integration: https://travis-ci.org/byu/serf
+  * [![Build Status](https://secure.travis-ci.org/byu/serf.png)](http://travis-ci.org/byu/serf)
+* RubyGems: http://rubygems.org/gems/serf
+* RubyDocs: http://rubydoc.info/gems/serf
+
+Interactors
+-----------
+
+The piece of work to be done. This takes in a request, represented
+by a "Message", and returns an "Event" as its result. The Interactor
+is the "Domain Controller" with respect to performing
+Domain Layer business logic in coordinating and interacting with
+the Domain Layer's Entities (Value Objects and Entity Gateways).
+
+1. Include the "Serf::Interactor" module in your class.
+2. Implement the 'call(message)' method.
+3. Return the tuple: (message, kind)
+  a. Hashie::Mash is recommended for the message, nil is acceptable
+  b. The kind is the string representation of the message type,
+    It is optional.
+
+Example:
+
+    require 'hashie'
+
+    class MyInteractor
+
+      def initialize(*contructor_params, &block)
+        # Do some validation here, or extra parameter setting with the args
+        @model = opts :model, MyModel
+      end
+
+      def call(message)
+        # Do something w/ the message and opts.
+        # Simple data structures for the Interactor's "Request".
+
+        item = @model.find message.model_id
+
+        # Make a simple data structure as the Interactor "Response".
+        response = Hashie::Mash.new
+        response.item = item
+        # Return the response 'kind' and the response data.
+        return response, 'my_app/events/did_something'
+      end
+    end
+
+
+Parcels
+-------
+
+A Parcel is just the package of Headers and Message. Serf's convention
+represents requests and responses as (mostly) just Plain Old Hash Objects
+(POHO as opposed to PORO) over the Boundaries (see Architecture Lost Years).
+This simplifies marshalling over the network. It also gives us easier
+semantics in defining Request and Responses without need of extra classes,
+code, etc.
+
+The Parcel in Ruby (Datastructure) is represented simply as:
+
+* A 2 element Hash: { headers: headers, message: message}.
+
+NOTE: Hashie::Mash is *Awesome*. (https://github.com/intridea/hashie)
+NOTE: Serf passes the parcel as frozen Hashie::Mash instances
+  to Interactor' call method by default.
+
+*Messages* are the representation of a Business Request or Business Event.
+
+In the parcel, the message is the business data. It specifies what
+business work needs to be done, or what business was done.
+Everything that an Interactor needs to execute its Use Case SHOULD
+be in the message.
+
+  RECOMMENDED: Use JSON Schema to validate the structure of a message.
+    https://github.com/hoxworth/json-schema
+    This can be implemented in the 'Policy' chain.
+
+*Headers* are the processing meta data that is associated with a Message.
+
+Headers provide information that would assist in processing, tracking
+a Message. But does not provide business relevant information to
+the Request or Event Message.
+
+  RECOMMENDED: Recommended to be placed in headers is the 'kind' field.
+
+The "kind" field identifies the ontological meaning of the message, which
+may be used to route messages over messaging channels to Interactors.
+The convention is 'mymodule/requests/my_business_request' for Requests,
+and 'mymodule/events/my_business_event' for Events.
+
+Examples are:
+* UUIDs to track request and events, providing a sequential order of
+  execution of commands. (Already Implemented by Serf).
+* Current User that sent the request. For authentication and authorization.
+* Host and Application Server that is processing this request.
+
+Generally, the header information is populated only by the infrastructure
+that hosts the Interactors. The Interactors themselves do not
+return any headers in the response. The Interactors are tasked to provide
+only business relevant data in the Event messages they return.
+
+
+Policies
+--------
+
+Serf implements Policy Chains to validate, check the incoming Parcels before
+actually executing Interactors.
+
+Example Benefits:
+* Authorization to execute Command.
+* Validation of Message schema
+
+Policies only need to implement a single method:
+
+    def check!(parcel)
+      raise 'Failure' # To fail the policy, raise an error.
+    end
+
+  RECOMMENDED: Use `Serf::Errors::PolicyFailure` error type.
+
+
+References
 ==========
 
-The underlying idea of Serf is to define a standard Ruby code interface
-that standalone gems can follow to create a business verticals services.
-These gems are intended to run as standalone processes in a distributed
-manner.
+Keynote: Architecture the Lost Years, by Robert Martin
+  * http://confreaks.com/videos/759
+  * http://vimeo.com/43612849
 
-Fundamentally, a service creates an abstraction of:
-1. Messages
-2. Handlers/Commands
+Domain Driven Design by Eric Evans:
+  * http://books.google.com/books?id=7dlaMs0SECsC&dq=domain+driven+design
 
-Messages are the representation of data, documents, etc that are
-marshalled from client to service, which represents the business
-level interaction of the service.
+Patterns of Enterprise Application Architecture by Martin Fowler
+  * http://martinfowler.com/books/eip.html
+  * Command (Unit of Work) Pattern
+  * Event Sourcing
 
-Messages may be command requests that a service must handle.
-Messages may be events that a service emits.
-Messages may be documents that represent state or business data.
+Enterprise Integration Patterns by Hohpe and Woolf
+  * http://www.eaipatterns.com/
 
-Handlers are the code that is executed over Messages.
-Handlers may process Command Messages.
-Handlers may process observed Events that 3rd party services emit.
+DDD for Rails Developers Series:
+  * http://rubysource.com/ddd-for-rails-developers-part-1-layered-architecture/
+  * http://rubysource.com/ddd-for-rails-developers-part-2-entities-and-values/ 
+  * http://rubysource.com/ddd-for-rails-developers-part-3-aggregates/
 
-Serf App and Channels
-=====================
+DCI in Ruby
+  * Maybe use DCI to better manage business logic in Entities.
+  * http://mikepackdev.com/blog_posts/24-the-right-way-to-code-dci-in-ruby
+  * http://mikepackdev.com/blog_posts/35-dci-with-ruby-refinements
+  * http://nicksda.apotomo.de/2011/12/ruby-on-rest-2-representers-and-the-dci-pattern/
 
-A Serf App is a Rack-like application that takes in an ENV hash with
-TWO important fields: message and context.
+CQRS
+  * http://www.udidahan.com/2009/12/09/clarified-cqrs/
+  * http://elegantcode.com/2009/11/11/cqrs-la-greg-young/
+  * http://elegantcode.com/2009/11/20/cqrs-the-domain-events/
 
-The Message is the request or event. The data that is to be processed.
+Life beyond Distributed Transactions: an Apostate’s Opinion by Pat Helland
+  * http://www.ics.uci.edu/~cs223/papers/cidr07p15.pdf
 
-The Context is meta data that needs to be taken into account about the
-processing of this data. The main important field may be a current user.
-Though, it is not explicitly defined.
+Building on Quicksand by Pat Helland
+  * http://arxiv.org/ftp/arxiv/papers/0909/0909.1788.pdf
 
-A request life cycle involves:
-1. Submitting a message and context to the SerfApp
-2. The Serf app will run middleware as defined by the DSL.
-3. Matched routes are found for the message and context.
-4. Run each route:
-  a. Run the policy chain for each route (This is for ACLs)
-  b. If no exception was raised, execute the route.
-5. Return all non-nil results to the caller.
-  a. Each result is a Message.
+The Domain Layer (from DDD):
 
-If set in the DSL, the success and error responses may be published
-to a response and/or error channel.
-
-
-Service Libraries
-=================
-
-1. Service Libraries SHOULD implement messages as just hashes with
-  defined schemas (JSON Schema).
-  a. Required by all messages is the 'kind' field.
-  b. By default, Serf Commands will read in hashes and turn them into
-    more convenient Hashie::Mash objects.
-2. Serialization of the messages SHOULD BE Json or MessagePack (I hate XML).
-3. Handlers MUST implement the 'build' class method.
-  a. This can just be aliased to new. But is made explicit in case we have
-    custom factories.
-4. Handler methods SHOULD return zero or more messages.
-  a. Raised errors are caught and pushed to error channels.
-  b. Returned messages MUST be Hash based objects for Serialization.
-5. Handler methods SHOULD handle catch their business logic exceptions and
-  return them as specialized messages that can be forwarded down error channels.
-  Uncaught exceptions that are then caught by Serf are pushed as
-  generic CaughtExceptionEvents, and are harder to deal with.
+1. Entities (Model Entities)- What your application is.
+  * Also remember Value Objects.
+  * How your Domain Model is structured, but NOT necessarily tied to the
+    underlying storage infrastructure.
+  * http://rubysource.com/ddd-for-rails-developers-part-2-entities-and-values/
+2. Domain Controllers (Interactors) - What your application does.
+  * The business logic of coordinating different entities.
+    Different than a Rails controller.
+  * Keynote: Architecture The Lost Years
+    Robert Martin
+    Ruby Midwest 2011
+    http://confreaks.com/videos/759
+  * Your Rails Application is Missing a Domain Controller
+    Nicholas Henry
+    http://blog.firsthand.ca/2011/12/your-rails-application-is-missing.html
+3. There is a balancing game of what business logic code lives in an
+    Entity vs a Domain Controller... Do what works for you.
+    But mostly follow "Use Cases" in Domain Controllers,
+    and "Application Agnostic Logic" in Entities.
 
 
 Example
@@ -87,170 +198,75 @@ Example
     require 'yell'
 
     require 'serf/builder'
-    require 'serf/command'
-    require 'serf/middleware/uuid_tagger'
-    require 'serf/util/options_extraction'
 
     # create a simple logger for this example
-    my_logger = Yell.new do |l|
-      l.level = :debug
-      l.adapter :datefile, 'my_production.log', :level => [:debug, :info, :warn]
-      l.adapter :datefile, 'my_error.log', :level => Yell.level.gte(:error)
-    end
-
-    # Helper class for this example to receive result or error messages
-    # and pipe it into our logger.
-    class MyChannel
-      def initialize(logger, error=false)
-        @logger = logger
-        @error = error
-      end
-      def push(message)
-        if @error
-          @logger.fatal "ERROR CHANNEL: #{message.to_json}"
-        else
-          @logger.debug "RESP  CHANNEL: #{message.to_json}"
-        end
-      end
-    end
+    my_logger = Yell.new STDOUT
 
     # my_lib/my_policy.rb
     class MyPolicy
 
-      def check!(message, context)
-        raise 'EXPECTED ERROR: Data is nil' if message[:data].nil?
-      end
-
-      def self.build(*args, &block)
-        new *args, &block
+      def check!(parcel)
+        raise 'Policy Error: User is nil' unless parcel.headers.user
       end
 
     end
 
-    # my_lib/my_overloaded_command.rb
-    class MyOverloadedCommand
-      include Serf::Command
+    # my_lib/my_interactor.rb
+    class MyInteractor
 
-      attr_reader :name
-      attr_reader :do_raise
+      def call(message)
+        raise 'Error' if message.raise_an_error
 
-      def initialize(*args)
-        extract_options! args
-        @name = opts! :name
-        @do_raise = opts :raises, false
-      end
+        # And return a message as result. Nil is valid response.
+        return { success: true }, 'my_lib/events/success_event'
 
-      def call(request, context)
-        # Just our name to sort things out
-
-        raise "EXPECTED ERROR: Forcing Error in #{name}" if do_raise
-
-        # Do work Here...
-        # And return 0 or more messages as result. Nil is valid response.
-        return { kind: "#{name}_result", input: request }
+        # Optionally just return the message w/o a tagged kind
+        #return { success: true }
       end
 
     end
 
     # Create a new builder for this serf app.
-    builder = Serf::Builder.new do
-      # Include some middleware
-      use Serf::Middleware::Masherize
-      use Serf::Middleware::UuidTagger
-      #use Serf::Middleware::GirlFridayAsync
+    app = Serf::Builder.new(
+      interactor: MyInteractor.new,
+      policy_chain: [
+        MyPolicy.new
+      ]).to_app
 
-      # Create response and error channels for the handler result messages.
-      response_channel MyChannel.new my_logger
-      error_channel MyChannel.new my_logger, true
-
-      # We pass in a logger to our Serf code: Serfer and Runners.
-      logger my_logger
-
-      # Here, we define a route.
-      # We are matching the kind for 'my_message', and we have the MyPolicy
-      # to filter for this route.
-      match 'my_message'
-      policy MyPolicy
-      run MyOverloadedCommand, name: 'my_message_command'
-
-      match 'other_message'
-      run MyOverloadedCommand, name: 'raises_error', raises: true
-      run MyOverloadedCommand, name: 'good_other_handler'
-
-      match /^events\/.*$/
-      run MyOverloadedCommand, name: 'regexp_matched_command'
-    end
-    app = builder.to_app
-
-    # This will submit a 'my_message' message (as a hash) to the Serf App.
-    # NOTE: We should get an error message pushed to the error channel
-    #  because no 'data' field was put in my_message as required
-    #  And the Result should have a CaughtExceptionEvent.
-    my_logger.info 'Call 1: Start'
-    results = app.call(
-      message: {
-        kind: 'my_message'
-      },
-      context: nil)
-    my_logger.info "Call 1: #{results.size} #{results.to_json}"
+    # This will submit a 'my_message' message (as a hash) to Serfer.
+    # Missing data field will raise an error within the interactor, which
+    # will be caught by the serfer.
+    results = app.call nil
+    my_logger.info "Call 1: #{results.to_json}"
 
     # Here is good result
-    my_logger.info 'Call 2: Start'
     results = app.call(
-      message: {
-        kind: 'my_message',
-        data: '2'
+      headers: {
+        user: 'user_info_1'
       },
-      context: nil)
-    my_logger.info "Call 2: #{results.size} #{results.to_json}"
+      message: {
+      })
+    my_logger.info "Call 2: #{results.to_json}"
 
-    # We should get two event messages in the results because we
-    # mounted two commands to the other_message kind.
-    my_logger.info 'Call 3: Start'
+    # Here get an error that was raised from the interactor
     results = app.call(
-      message: {
-        kind: 'other_message',
-        data: '3'
+      headers: {
+        user: 'user_info_1'
       },
-      context: nil)
-    my_logger.info "Call 3: #{results.size} #{results.to_json}"
-
-    # This will match a regexp call
-    my_logger.info 'Call 4: Start'
-    results = app.call(
       message: {
-        kind: 'events/my_event',
-        data: '4'
-      },
-      context: nil)
-    my_logger.info "Call 4: #{results.size} #{results.to_json}"
-
-    begin
-      # Here, we're going to submit a message that we don't handle.
-      # By default, an exception will be raised.
-      my_logger.info 'Call 5: Start'
-      app.call(
-        message: {
-          kind: 'unhandled_message_kind'
-        },
-        context: nil)
-      my_logger.fatal 'OOOPS: Should not get here'
-    rescue => e
-      my_logger.info "Call 5: Caught in main: #{e.inspect}"
-    end
+        raise_an_error: true
+      })
+    my_logger.info "Call 3: #{results.to_json}"
 
 
-Contributing to serf
-====================
+Contributing
+============
 
-* Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet
-* Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it
-* Fork the project
-* Start a feature/bugfix branch
-* Commit and push until you are happy with your contribution
-* Make sure to add tests for it. This is important so I don't break it in a future version unintentionally.
-* Please try not to mess with the Rakefile, version, or history. If you want to have your own version, or is otherwise necessary, that is fine, but please isolate to its own commit so I can cherry-pick around it.
-
+1. Fork it
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Create new Pull Request
 
 Copyright
 =========

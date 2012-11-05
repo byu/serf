@@ -1,36 +1,38 @@
+require 'hashie'
+
+require 'serf/util/options_extraction'
 require 'serf/util/uuidable'
 
 module Serf
 module Middleware
 
   ##
-  # Middleware to add a request uuid to both the message and context
-  # of the env hash. But it won't overwrite the uuid field
-  # if the incoming request already has it.
+  # Middleware to add uuids to the headers of the parcel hash.
   #
   class UuidTagger
     include Serf::Util::OptionsExtraction
 
+    attr_reader :app
     attr_reader :uuidable
 
     ##
     # @param app the app
-    # @options opts [String] :field the ENV field to set with a UUID.
     #
     def initialize(app, *args)
       extract_options! args
       @app = app
-      @uuidable = opts :uuidable, Serf::Util::Uuidable
+      @uuidable = opts(:uuidable) { Serf::Util::Uuidable.new }
     end
 
-    def call(env)
-      message = env[:message]
-      message[:uuid] = uuidable.create_coded_uuid if message && !message[:uuid]
+    def call(parcel)
+      # Makes sure our parcel has headers
+      parcel[:headers] ||= {}
 
-      context = env[:context]
-      context[:uuid] = uuidable.create_coded_uuid if context && !context[:uuid]
+      # Tag headers with a UUID unless it already has one
+      parcel[:headers][:uuid] ||= uuidable.create_coded_uuid
 
-      @app.call env
+      # Pass on the given parcel with newly annotated headers
+      app.call parcel
     end
 
   end

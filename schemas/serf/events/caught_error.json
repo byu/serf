@@ -1,20 +1,17 @@
 {
-  "description": "Message Kind: serf/messages/caught_exception_event",
+  "description": "serf/events/caught_error",
   "type": "object",
   "properties": {
-    "context": {
-      "type": "object"
-    },
     "error": {
       "type": "string"
     },
     "message": {
       "type": "string"
     },
-    "backtrace": {
-      "type": "string"
+    "process_env": {
+      "type": "object"
     },
-    "uuid": {
+    "backtrace": {
       "type": "string"
     }
   }
