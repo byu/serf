@@ -2,8 +2,7 @@ guard(
     :rspec,
     cli: '--format Fuubar --color',
     all_on_start: true,
-    all_after_pass: false,
-    :version => 2) do
+    all_after_pass: false) do
 
   # Watch our specs
   watch(%r{^spec/.+_spec\.rb$})
