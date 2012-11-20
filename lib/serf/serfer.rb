@@ -1,7 +1,7 @@
 require 'hashie'
+require 'optser'
 
 require 'serf/parcel_builder'
-require 'serf/util/options_extraction'
 require 'serf/util/uuidable'
 
 module Serf
@@ -10,21 +10,19 @@ module Serf
   # Class to drive the Interactor execution.
   #
   class Serfer
-    include Serf::Util::OptionsExtraction
-
     attr_reader :interactor
     attr_reader :parcel_builder
     attr_reader :uuidable
 
     def initialize(interactor, *args)
-      extract_options! args
+      opts = Optser.extract_options! args
 
       # How to and when to handle requests
       @interactor = interactor
 
       # Tunable knobs
-      @parcel_builder = opts(:parcel_builder) { Serf::ParcelBuilder.new }
-      @uuidable = opts(:uuidable) { Serf::Util::Uuidable.new }
+      @parcel_builder = opts.get(:parcel_builder) { Serf::ParcelBuilder.new }
+      @uuidable = opts.get(:uuidable) { Serf::Util::Uuidable.new }
     end
 
     ##

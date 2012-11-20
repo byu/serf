@@ -1,18 +1,16 @@
-require 'serf/util/options_extraction'
+require 'optser'
 
 module Serf
 module Middleware
 
   class PolicyChecker
-    include Serf::Util::OptionsExtraction
-
     attr_reader :app
     attr_reader :policy_chain
 
     def initialize(app, *args)
-      extract_options! args
+      opts = Optser.extract_options! args
       @app = app
-      @policy_chain = opts :policy_chain, []
+      @policy_chain = opts.get :policy_chain, []
     end
 
     ##

@@ -1,6 +1,6 @@
 require 'hashie'
+require 'optser'
 
-require 'serf/util/options_extraction'
 require 'serf/util/uuidable'
 
 module Serf
@@ -10,8 +10,6 @@ module Middleware
   # Middleware to add uuids to the headers of the parcel hash.
   #
   class UuidTagger
-    include Serf::Util::OptionsExtraction
-
     attr_reader :app
     attr_reader :uuidable
 
@@ -19,9 +17,9 @@ module Middleware
     # @param app the app
     #
     def initialize(app, *args)
-      extract_options! args
+      opts = Optser.extract_options! args
       @app = app
-      @uuidable = opts(:uuidable) { Serf::Util::Uuidable.new }
+      @uuidable = opts.get(:uuidable) { Serf::Util::Uuidable.new }
     end
 
     def call(parcel)
