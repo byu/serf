@@ -32,7 +32,6 @@ describe Serf::Builder do
 
       it 'runs the app' do
         response = subject.to_app.call request_parcel
-        puts response.to_hash
         response.message.should == request_parcel.message
         response.headers.kind.should == response_kind
       end
