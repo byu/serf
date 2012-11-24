@@ -4,6 +4,7 @@ require 'serf/middleware/error_handler'
 require 'serf/middleware/parcel_freezer'
 require 'serf/middleware/parcel_masher'
 require 'serf/middleware/policy_checker'
+require 'serf/middleware/request_timer'
 require 'serf/middleware/uuid_tagger'
 require 'serf/serfer'
 
@@ -35,6 +36,7 @@ module Serf
     #   use Serf::Serfer
     #
     def use_defaults
+      use Serf::Middleware::RequestTimer
       use Serf::Middleware::ParcelMasher
       use Serf::Middleware::UuidTagger
       use Serf::Middleware::ParcelFreezer

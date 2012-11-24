@@ -5,6 +5,13 @@ require 'securerandom'
 FactoryGirl.define do
   sequence(:random_string) { SecureRandom.hex }
 
+  factory :empty_parcel, class: Hashie::Mash do
+    headers {{
+    }}
+    message {{
+    }}
+  end
+
   factory :random_parcel, class: Hashie::Mash do
     headers {{
       uuid: generate(:random_string),
