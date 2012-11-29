@@ -9,7 +9,7 @@ describe Serf::Util::ErrorHandling do
       result, error = subject.with_error_handling do
         raise 'Some Error Message'
       end
-      result.should be_nil
+      expect(result).to be_nil
       JsonSchemaTester.new.validate_for!(
         'serf/events/caught_error',
         error)
@@ -26,8 +26,8 @@ describe Serf::Util::ErrorHandling do
       result, error = subject.with_error_handling do
         response_parcel
       end
-      result.should == response_parcel
-      error.should be_nil
+      expect(result).to eq(response_parcel)
+      expect(error).to be_nil
     end
 
   end

@@ -31,7 +31,7 @@ describe Serf::Serfer do
       parcel = serfer.call(
         headers: nil,
         message: request_message)
-      parcel.message.should == response_message
+      expect(parcel.message).to eq(response_message)
     end
 
     it 'sets the kind header in response' do
@@ -44,7 +44,7 @@ describe Serf::Serfer do
       parcel = serfer.call(
         headers: nil,
         message: request_message)
-      parcel.headers.kind.should == 'KIND'
+      expect(parcel.headers.kind).to eq('KIND')
     end
 
     it 'generate uuids' do

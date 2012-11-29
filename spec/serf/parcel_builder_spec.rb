@@ -16,29 +16,29 @@ describe Serf::ParcelBuilder do
 
     it 'returns a Hashie' do
       parcel = subject.build
-      parcel.should be_a_kind_of(Hashie::Mash)
+      expect(parcel).to be_a_kind_of(Hashie::Mash)
     end
 
     it 'sets default parcel headers' do
       parcel = subject.build
-      parcel[:headers].should == {}
+      expect(parcel[:headers]).to eq({})
     end
 
     it 'sets default parcel message' do
       parcel = subject.build
-      parcel[:headers].should == {}
+      expect(parcel[:headers]).to eq({})
     end
 
     it 'sets given headers and message' do
       parcel = subject.build random_headers, random_message
-      parcel[:headers].should == random_headers
-      parcel[:message].should == random_message
+      expect(parcel[:headers]).to eq(random_headers)
+      expect(parcel[:message]).to eq(random_message)
     end
 
     it 'will coerce headers and message into Hashie::Mash' do
       parcel = subject.build nil, nil
-      parcel[:headers].should be_a_kind_of(Hashie::Mash)
-      parcel[:message].should be_a_kind_of(Hashie::Mash)
+      expect(parcel[:headers]).to be_a_kind_of(Hashie::Mash)
+      expect(parcel[:message]).to be_a_kind_of(Hashie::Mash)
     end
 
   end

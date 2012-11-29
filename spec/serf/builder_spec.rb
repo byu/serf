@@ -21,7 +21,7 @@ describe Serf::Builder do
   describe '#to_app' do
 
     it 'builds a callable app' do
-      subject.to_app.should respond_to(:call)
+      expect(subject.to_app).to respond_to(:call)
     end
 
   end
@@ -32,8 +32,8 @@ describe Serf::Builder do
 
       it 'runs the app' do
         response = subject.to_app.call request_parcel
-        response.message.should == request_parcel.message
-        response.headers.kind.should == response_kind
+        expect(response.message).to eq(request_parcel.message)
+        expect(response.headers.kind).to eq(response_kind)
       end
 
     end

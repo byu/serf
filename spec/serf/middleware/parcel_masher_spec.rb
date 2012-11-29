@@ -8,19 +8,19 @@ describe Serf::Middleware::ParcelMasher do
 
   describe '#call' do
 
-    it 'should Hashie::Mash the parcel' do
+    it 'makes Hashie::Mash of the parcel' do
       parcel = nil
       app = described_class.new proc { |parcel|
-        parcel.should be_a_kind_of(Hashie::Mash)
+        expect(parcel).to be_a_kind_of(Hashie::Mash)
       }
       app.call parcel
     end
 
-    it 'should autocreate headers and message' do
+    it 'autocreate headers and message' do
       parcel = nil
       app = described_class.new proc { |parcel|
-        parcel.headers.should be_a_kind_of(Hashie::Mash)
-        parcel.message.should be_a_kind_of(Hashie::Mash)
+        expect(parcel.headers).to be_a_kind_of(Hashie::Mash)
+        expect(parcel.message).to be_a_kind_of(Hashie::Mash)
       }
       app.call parcel
     end

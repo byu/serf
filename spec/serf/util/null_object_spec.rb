@@ -10,17 +10,17 @@ describe Serf::Util::NullObject do
   }
 
   it 'returns itself on any fuzzy method call' do
-    subject.send(random_method_name).should == subject
+    expect(subject.send(random_method_name)).to eq(subject)
   end
 
   it 'returns itself on a missing method' do
-    subject.my_missing_method.should == subject
+    expect(subject.my_missing_method).to eq(subject)
   end
 
   it 'returns itself on a missing method with params' do
-    subject.my_missing_method(1,2,3,4) {
+    expect(subject.my_missing_method(1,2,3,4) {
       nil
-    }.should == subject
+    }).to eq(subject)
   end
 
 end

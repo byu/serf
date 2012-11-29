@@ -35,7 +35,7 @@ describe Serf::Middleware::RequestTimer do
       # Execute the Test
       request_timer = described_class.new mock_app, :timer => mock_timer_class
       response_parcel = request_timer.call({})
-      response_parcel.headers.elapsed_time.should == elapsed_time
+      expect(response_parcel.headers.elapsed_time).to eq(elapsed_time)
     end
 
   end

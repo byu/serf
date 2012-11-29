@@ -3,14 +3,14 @@ require 'spec_helper'
 require 'serf/util/uuidable'
 
 ##
-# NOTE: Not really great tests here... I really should mock out
+# NOTE: Not really great tests here... I need to mock out
 #   the uuid_tool to really get at the meat of the work.
 #
 describe Serf::Util::Uuidable do
 
   its(:create_coded_uuid) {
-    should_not be_nil
-    subject.size.should == 22
+    expect(subject).to_not be_nil
+    expect(subject.size).to eq(22)
   }
 
   describe '#parse_coded_uuid' do
@@ -25,30 +25,30 @@ describe Serf::Util::Uuidable do
 
     it 'works with no parent' do
       uuids = subject.create_uuids
-      uuids[:uuid].should_not be_nil
-      uuids[:parent_uuid].should be_nil
-      uuids[:origin_uuid].should be_nil
+      expect(uuids[:uuid]).to_not be_nil
+      expect(uuids[:parent_uuid]).to be_nil
+      expect(uuids[:origin_uuid]).to be_nil
     end
 
     it 'copies origin from parent' do
       uuids = subject.create_uuids origin_uuid: 'MY_UUID'
-      uuids[:uuid].should_not be_nil
-      uuids[:parent_uuid].should be_nil
-      uuids[:origin_uuid].should == 'MY_UUID'
+      expect(uuids[:uuid]).to_not be_nil
+      expect(uuids[:parent_uuid]).to be_nil
+      expect(uuids[:origin_uuid]).to eq('MY_UUID')
     end
 
     it 'sets origin from parent[:parent_uuid] if origin is nonexistent ' do
       uuids = subject.create_uuids parent_uuid: 'MY_UUID'
-      uuids[:uuid].should_not be_nil
-      uuids[:parent_uuid].should be_nil
-      uuids[:origin_uuid].should == 'MY_UUID'
+      expect(uuids[:uuid]).to_not be_nil
+      expect(uuids[:parent_uuid]).to be_nil
+      expect(uuids[:origin_uuid]).to eq('MY_UUID')
     end
 
     it 'sets origin, parent from parent[:uuid] on missing origin and parent' do
       uuids = subject.create_uuids uuid: 'MY_UUID'
-      uuids[:uuid].should_not be_nil
-      uuids[:parent_uuid].should == 'MY_UUID'
-      uuids[:origin_uuid].should == 'MY_UUID'
+      expect(uuids[:uuid]).to_not be_nil
+      expect(uuids[:parent_uuid]).to eq('MY_UUID')
+      expect(uuids[:origin_uuid]).to eq('MY_UUID')
     end
 
   end
