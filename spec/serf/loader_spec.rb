@@ -2,7 +2,7 @@ require 'spec_helper'
 
 require 'serf/loader'
 
-describe Serf::Loader::Loader do
+describe Serf::Loader do
   let(:root_library_path) {
     File.join(File.dirname(__FILE__), '../..')
   }
@@ -18,7 +18,7 @@ describe Serf::Loader::Loader do
         ])
     }
     subject {
-      Serf::Loader::Loader.new.serfup(
+      Serf::Loader.serfup(
         serfup_config,
         root_library_path)
     }
