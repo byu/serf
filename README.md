@@ -287,7 +287,7 @@ Serf Builder Example
 Serf Loader Example
 ===================
 
-Look inside the example subdirectory for the serf files for this example.
+Look inside the example subdirectory for the serf files in this example.
 
 
     ####
@@ -299,20 +299,23 @@ Look inside the example subdirectory for the serf files for this example.
     # Throwing in this class definition to make example work
     class MyCreateWidget
 
-      def initialize(logger)
+      def initialize(logger, success_message)
         @logger = logger
+        @success_message = success_message
       end
 
       def call(parcel)
         @logger.info "In My Create Widget, creating a widget: #{parcel.to_json}"
-        return { success: true }
+        return { success: @success_message }
       end
     end
 
     ##
-    # Registers a serf that responds to a parcel wht the given request "kind".
-    registry.add 'subsystem/requests/create_widget' do |r|
-      serf interactor: MyCreateWidget.new(r[:logger])
+    # Registers a serf that responds to a parcel with the given request "kind".
+    # The interactor is instantiated by asking for other components in the
+    # registry and for parameters set in the environment variable.
+    registry.add 'subsystem/requests/create_widget' do |r, env|
+      serf interactor: MyCreateWidget.new(r[:logger], env[:success_message])
     end
 
 
@@ -337,9 +340,12 @@ Look inside the example subdirectory for the serf files for this example.
     config.serfs = [
       'subsystem/requests/create_widget'
     ]
+    env = Hashie::Mash.new(
+      success_message: 'Some environment variable like redis URL'
+    )
 
     # Loading the configuration, creating the serfs.
-    serf_map = Serf::Loader.serfup config
+    serf_map = Serf::Loader.serfup config, env: env
 
     # Make an example request parcel
     request_parcel = {

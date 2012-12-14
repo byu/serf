@@ -1,3 +1,5 @@
+require 'hashie'
+
 module Serf
 module Loader
 
@@ -45,9 +47,11 @@ module Loader
     attr_reader :blocks
     attr_reader :values
 
-    def initialize
+    def initialize(*args)
+      opts = Optser.extract_options! args
       @blocks = {}
       @values = {}
+      @env = opts.get(:env) { Hashie::Mash.new }
     end
 
     ##
@@ -72,7 +76,7 @@ module Loader
       # No memoized value, so grab the block, call it and memoize it
       # return the block's return value, or nil.
       if block = @blocks.delete(name)
-        @values[name] = block.call self
+        @values[name] = block.call self, @env
       end
     end
 

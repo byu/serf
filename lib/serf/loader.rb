@@ -7,8 +7,8 @@ module Serf
     ##
     # @see Serf::Loader::Loader
     #
-    def self.serfup(serfup, base_path='.')
-      Serf::Loader::Loader.new.serfup serfup, base_path
+    def self.serfup(config, *args)
+      Serf::Loader::Loader.new.serfup config, *args
     end
 
   end

@@ -8,6 +8,9 @@ describe Serf::Loader::Loader do
   }
 
   context '#serfup Serf Map' do
+    let(:random_message) {
+      FactoryGirl.create :random_message
+    }
     let(:serfup_config) {
       Hashie::Mash.new(
         globs: [
@@ -20,7 +23,10 @@ describe Serf::Loader::Loader do
     subject {
       Serf::Loader::Loader.new.serfup(
         serfup_config,
-        root_library_path)
+        base_path: root_library_path,
+        env: {
+          success_message: random_message
+        })
     }
 
     it 'loads the Serfs into a frozen Serf Map' do
@@ -42,6 +48,12 @@ describe Serf::Loader::Loader do
 
     it 'returns nil on not found parcel kind' do
       expect(subject[nil]).to be_nil
+    end
+
+    it 'passes in a good environment' do
+      serf = subject['subsystem/requests/create_widget']
+      results = serf.call({})
+      expect(results.message.success_message).to eq(random_message)
     end
   end
 

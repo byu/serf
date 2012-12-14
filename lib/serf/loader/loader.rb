@@ -17,7 +17,7 @@ module Loader
 
     def initialize(*args)
       opts = Optser.extract_options! args
-      @registry = opts.get(:registry) { Serf::Loader::Registry.new }
+      @registry_class = opts.get :registry_class, Serf::Loader::Registry
       @builder_class = opts.get :builder_class, Serf::Builder
     end
 
@@ -39,10 +39,23 @@ module Loader
     #     'subsystem/requests/create_widget'
     #   ]
     #
+    # Example Env Hash:
+    #
+    #   env = Hashie::Mash.new
+    #   env.web_service = 'http://example.com/'
+    #
     # @params config the loaded yaml configuration file
+    # @param [Hash] opts env and basepath options
+    # @option opts [String] :base_path root of where to run the config
+    # @option opts [Hash] :env environmental variables for runtime config
     # @returns a frozen Serf Map of request parcel kind to serf.
     #
-    def serfup(config, base_path='.')
+    def serfup(config, *args)
+      opts = Optser.extract_options! args
+      base_path = opts.get :base_path, '.'
+      env = opts.get(:env) { Hashie::Mash.new }
+      @registry = @registry_class.new env: env
+
       # Load in all the components listed
       config[:globs].each do |glob_pattern|
         globs = Dir.glob File.join(base_path, glob_pattern)
@@ -60,7 +73,8 @@ module Loader
         map[serf] = @registry[serf]
       end
 
-      # return a frozen registry.
+      # return a frozen registry, clear the registry
+      @registry = nil
       map.freeze
       return map
     end
