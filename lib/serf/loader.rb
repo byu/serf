@@ -7,7 +7,7 @@ module Serf
     ##
     # @see Serf::Loader::Loader
     #
-    def self.serfup(serfup, base_path)
+    def self.serfup(serfup, base_path='.')
       Serf::Loader::Loader.new.serfup serfup, base_path
     end
 
