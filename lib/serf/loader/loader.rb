@@ -71,6 +71,7 @@ module Loader
       map = Hashie::Mash.new
       config[:serfs].each do |serf|
         map[serf] = @registry[serf]
+        raise "Missing Serf: #{serf}" if map[serf].nil?
       end
 
       # return a frozen registry, clear the registry

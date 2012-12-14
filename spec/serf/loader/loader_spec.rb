@@ -57,4 +57,20 @@ describe Serf::Loader::Loader do
     end
   end
 
+  context '#serfup Serf Map with missing Serf' do
+    let(:serfup_config) {
+      Hashie::Mash.new(
+        globs: [],
+        serfs: [
+          'subsystem/requests/create_widget'
+        ])
+    }
+
+    it 'raises an error' do
+      expect {
+        Serf::Loader::Loader.new.serfup serfup_config
+      }.to raise_error('Missing Serf: subsystem/requests/create_widget')
+    end
+  end
+
 end
