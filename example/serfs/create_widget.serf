@@ -1,0 +1,20 @@
+require 'json'
+# require 'subsystem/commands/my_create_widget'
+# Throwing in this class definition to make example work
+class MyCreateWidget
+
+  def initialize(logger)
+    @logger = logger
+  end
+
+  def call(parcel)
+    @logger.info "In My Create Widget, creating a widget: #{parcel.to_json}"
+    return { success: true }
+  end
+end
+
+##
+# Registers a serf that responds to a parcel wht the given request "kind".
+registry.add 'subsystem/requests/create_widget' do |r|
+  serf interactor: MyCreateWidget.new(r[:logger])
+end

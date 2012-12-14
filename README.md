@@ -3,6 +3,14 @@ serf
 
 Code your Interactors with policy protection.
 
+Serf (a Serf App) -- an individual rack-like call chain.
+* Interactors define your business logic
+* Policies decide access
+* Middleware augment the request processing
+
+Serf Map -- a set of Serfs.
+* A registry of Serfs, mapped by the parcel kinds.
+
 Serf Links
 ----------
 
@@ -127,6 +135,23 @@ Policies only need to implement a single method:
   RECOMMENDED: Use `Serf::Errors::PolicyFailure` error type.
 
 
+Thread Safety
+-------------
+
+Yes and No, it depends:
+* Serf Middleware and Serf Utils are all *Thread Safe* by default.
+  It may not be the case if thread unsafe options are passed in the
+  instantiation of these objects.
+* Built Serfs are *Thread Safe* **if** the developer took care
+  in the creation of the Interactors and in the dependency injection
+  wiring of the Serfs by the builder and loader.
+* The Builder and Loader are *Thread UNSAFE* because it just doesn't make
+  sense that multiple threads should compete/coordinate in the creation
+  and wiring of the created Serfs (Serf Apps) and Serf Maps.
+  This is usually done at start up by the main thread.
+  This includes the utility classes that the loader uses.
+
+
 References
 ==========
 
@@ -190,8 +215,8 @@ The Domain Layer (from DDD):
     and "Application Agnostic Logic" in Entities.
 
 
-Example
-=======
+Serf Builder Example
+====================
 
     # Require our libraries
     require 'json'
@@ -226,8 +251,8 @@ Example
 
     end
 
-    # Create a new builder for this serf app.
-    app = Serf::Builder.new(
+    # Create a new builder for this Serf (aka Serf App).
+    serf = Serf::Builder.new(
       interactor: MyInteractor.new,
       policy_chain: [
         MyPolicy.new
@@ -236,11 +261,11 @@ Example
     # This will submit a 'my_message' message (as a hash) to Serfer.
     # Missing data field will raise an error within the interactor, which
     # will be caught by the serfer.
-    results = app.call nil
+    results = serf.call nil
     my_logger.info "Call 1: #{results.to_json}"
 
     # Here is good result
-    results = app.call(
+    results = serf.call(
       headers: {
         user: 'user_info_1'
       },
@@ -249,7 +274,7 @@ Example
     my_logger.info "Call 2: #{results.to_json}"
 
     # Here get an error that was raised from the interactor
-    results = app.call(
+    results = serf.call(
       headers: {
         user: 'user_info_1'
       },
@@ -257,6 +282,81 @@ Example
         raise_an_error: true
       })
     my_logger.info "Call 3: #{results.to_json}"
+
+
+Serf Loader Example
+===================
+
+Look inside the example subdirectory for the serf files for this example.
+
+
+    ####
+    ## File: example/serfs/create_widget.serf
+    ####
+
+    require 'json'
+    # require 'subsystem/commands/my_create_widget'
+    # Throwing in this class definition to make example work
+    class MyCreateWidget
+
+      def initialize(logger)
+        @logger = logger
+      end
+
+      def call(parcel)
+        @logger.info "In My Create Widget, creating a widget: #{parcel.to_json}"
+        return { success: true }
+      end
+    end
+
+    ##
+    # Registers a serf that responds to a parcel wht the given request "kind".
+    registry.add 'subsystem/requests/create_widget' do |r|
+      serf interactor: MyCreateWidget.new(r[:logger])
+    end
+
+
+    ####
+    ## In another ruby script, where we may load and use serfs.
+    ####
+
+    require 'hashie'
+    require 'json'
+    require 'yell'
+
+    require 'serf/loader'
+
+    # Making a logger for the top level example
+    logger = Yell.new STDOUT
+
+    # Hacking up a configuration
+    config = Hashie::Mash.new
+    config.globs = [
+      'example/**/*.serf'
+    ]
+    config.serfs = [
+      'subsystem/requests/create_widget'
+    ]
+
+    # Loading the configuration, creating the serfs.
+    serf_map = Serf::Loader.serfup config
+
+    # Make an example request parcel
+    request_parcel = {
+      headers: {
+        kind: 'subsystem/requests/create_widget'
+      },
+      message: {
+        name: 'some widget name'
+      }
+    }
+
+    #
+    # Look up the create widget serf by a request kind name,
+    # execute the serf, and log the results
+    serf = serf_map[request_parcel[:headers][:kind]]
+    results = serf.call request_parcel
+    logger.info results.to_json
 
 
 Contributing
