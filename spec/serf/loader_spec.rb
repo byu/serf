@@ -11,18 +11,14 @@ describe Serf::Loader do
     let(:random_message) {
       FactoryGirl.create :random_message
     }
-    let(:serfup_config) {
-      Hashie::Mash.new(
+    subject {
+      Serf::Loader.serfup(
         globs: [
           'example/**/*.serf'
         ],
         serfs: [
           'subsystem/requests/create_widget'
-        ])
-    }
-    subject {
-      Serf::Loader.serfup(
-        serfup_config,
+        ],
         base_path: root_library_path,
         env: {
           success_message: random_message

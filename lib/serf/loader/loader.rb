@@ -44,20 +44,23 @@ module Loader
     #   env = Hashie::Mash.new
     #   env.web_service = 'http://example.com/'
     #
-    # @params config the loaded yaml configuration file
     # @param [Hash] opts env and basepath options
+    # @option opts [Array] :globs list of file globs to load serf configs
+    # @option opts [Array] :serfs list of serfs to export in Serf Map.
     # @option opts [String] :base_path root of where to run the config
     # @option opts [Hash] :env environmental variables for runtime config
     # @returns a frozen Serf Map of request parcel kind to serf.
     #
-    def serfup(config, *args)
+    def serfup(*args)
       opts = Optser.extract_options! args
+      globs = opts.get! :globs
+      serfs = opts.get! :serfs
       base_path = opts.get :base_path, '.'
       env = opts.get(:env) { Hashie::Mash.new }
       @registry = @registry_class.new env: env
 
       # Load in all the components listed
-      config[:globs].each do |glob_pattern|
+      globs.each do |glob_pattern|
         globs = Dir.glob File.join(base_path, glob_pattern)
         globs.each do |filename|
           File.open filename do |file|
@@ -69,7 +72,7 @@ module Loader
 
       # Construct all the "serfs"
       map = Hashie::Mash.new
-      config[:serfs].each do |serf|
+      serfs.each do |serf|
         map[serf] = @registry[serf]
         raise "Missing Serf: #{serf}" if map[serf].nil?
       end

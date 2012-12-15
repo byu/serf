@@ -332,20 +332,21 @@ Look inside the example subdirectory for the serf files in this example.
     # Making a logger for the top level example
     logger = Yell.new STDOUT
 
-    # Hacking up a configuration
-    config = Hashie::Mash.new
-    config.globs = [
+    # Globs to search for serf files
+    globs = [
       'example/**/*.serf'
     ]
-    config.serfs = [
+    # The serf requests that the loaded Serf Map will handle.
+    serfs = [
       'subsystem/requests/create_widget'
     ]
+    # A simple environment variables hash, runtime configuration
     env = Hashie::Mash.new(
       success_message: 'Some environment variable like redis URL'
     )
 
     # Loading the configuration, creating the serfs.
-    serf_map = Serf::Loader.serfup config, env: env
+    serf_map = Serf::Loader.serfup globs: globs, serfs: serfs, env: env
 
     # Make an example request parcel
     request_parcel = {
