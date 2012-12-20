@@ -26,7 +26,7 @@ describe Serf::Serfer do
       mock_app.
         should_receive(:call).
         with(request_message).
-        and_return(response_message)
+        and_return([nil, response_message])
       serfer = described_class.new mock_app
       parcel = serfer.call(
         headers: nil,
@@ -39,7 +39,7 @@ describe Serf::Serfer do
       mock_app.
         should_receive(:call).
         with(request_message).
-        and_return([response_message, 'KIND'])
+        and_return(['KIND', response_message])
       serfer = described_class.new mock_app
       parcel = serfer.call(
         headers: nil,

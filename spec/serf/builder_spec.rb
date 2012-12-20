@@ -11,7 +11,7 @@ describe Serf::Builder do
   }
   let(:app) {
     lambda { |parcel|
-      return parcel, response_kind
+      return response_kind, parcel
     }
   }
   subject {

@@ -33,7 +33,7 @@ module Serf
       message = parcel[:message]
 
       # 1. Execute interactor
-      response_message, response_kind = interactor.call message
+      response_kind, response_message = interactor.call message
 
       # 2. Create the response headers
       response_headers = uuidable.create_uuids headers

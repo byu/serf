@@ -31,10 +31,18 @@ the Domain Layer's Entities (Value Objects and Entity Gateways).
 
 1. Include the "Serf::Interactor" module in your class.
 2. Implement the 'call(message)' method.
-3. Return the tuple: (message, kind)
-  a. Hashie::Mash is recommended for the message, nil is acceptable
-  b. The kind is the string representation of the message type,
-    It is optional.
+3. Return the tuple: (kind, message)
+  a. The kind is the string representation of the message type,
+    This field is RECOMMENDED.
+  b. The message field provides detailed return data about the
+    interactor's processing.
+    Hashie::Mash is suggested for the message, nil is acceptable.
+
+The reason that the interactor SHOULD return a kind is to properly
+identify the semantic meaning of the returned message, even if
+said returned message is empty. This also assists the handling
+of response parcels in other pipelines without the need to
+introspect the parcel's message.
 
 Example:
 
@@ -57,7 +65,7 @@ Example:
         response = Hashie::Mash.new
         response.item = item
         # Return the response 'kind' and the response data.
-        return response, 'my_app/events/did_something'
+        return 'my_app/events/did_something', response
       end
     end
 
@@ -243,10 +251,10 @@ Serf Builder Example
         raise 'Error' if message.raise_an_error
 
         # And return a message as result. Nil is valid response.
-        return { success: true }, 'my_lib/events/success_event'
+        return 'my_lib/events/success_event', { success: true }
 
-        # Optionally just return the message w/o a tagged kind
-        #return { success: true }
+        # Optionally just return the kind
+        # return 'my_lib/events/success_event'
       end
 
     end
@@ -306,7 +314,8 @@ Look inside the example subdirectory for the serf files in this example.
 
       def call(parcel)
         @logger.info "In My Create Widget, creating a widget: #{parcel.to_json}"
-        return { success: @success_message }
+        return 'subsystem/events/mywidget_created',
+          { success_message: @success_message }
       end
     end
 

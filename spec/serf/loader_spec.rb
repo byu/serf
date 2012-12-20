@@ -49,6 +49,7 @@ describe Serf::Loader do
     it 'passes in a good environment' do
       serf = subject['subsystem/requests/create_widget']
       results = serf.call({})
+      expect(results.headers.kind).to eq('subsystem/events/mywidget_created')
       expect(results.message.success_message).to eq(random_message)
     end
   end

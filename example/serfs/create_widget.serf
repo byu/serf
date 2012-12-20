@@ -10,7 +10,8 @@ class MyCreateWidget
 
   def call(parcel)
     @logger.info "In My Create Widget, creating a widget: #{parcel.to_json}"
-    return { success_message: @success_message }
+    return 'subsystem/events/mywidget_created',
+      { success_message: @success_message }
   end
 end
 
