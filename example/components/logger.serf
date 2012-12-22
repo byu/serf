@@ -1,0 +1,7 @@
+require 'yell'
+
+##
+# This is the registration of a component
+registry.add 'logger' do |r|
+  Yell.new STDOUT
+end

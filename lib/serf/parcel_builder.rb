@@ -1,6 +1,5 @@
 require 'hashie'
-
-require 'serf/util/options_extraction'
+require 'optser'
 
 module Serf
 
@@ -8,14 +7,12 @@ module Serf
   # Builds Parcels as Hashie::Mash objects with headers and messages.
   #
   class ParcelBuilder
-    include Serf::Util::OptionsExtraction
-
     attr_reader :mash_class
 
     def initialize(*args)
-      extract_options! args
+      opts = Optser.extract_options! args
 
-      @mash_class = opts :mash_class, Hashie::Mash
+      @mash_class = opts.get :mash_class, Hashie::Mash
     end
 
     def build(headers=nil, message=nil)

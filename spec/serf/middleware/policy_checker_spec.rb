@@ -9,7 +9,7 @@ describe Serf::Middleware::PolicyChecker do
 
     context 'when policy raises error' do
 
-      it 'should not call app' do
+      it 'does not call app' do
         uncalled_mock = double 'uncalled mock'
         app = described_class.new(
           uncalled_mock,
@@ -27,7 +27,7 @@ describe Serf::Middleware::PolicyChecker do
 
     context 'when all policies pass' do
 
-      it 'should call the app' do
+      it 'calls the app' do
         parcel = double 'parcel'
         parcel.should_receive :some_success
         app = described_class.new(
@@ -43,7 +43,7 @@ describe Serf::Middleware::PolicyChecker do
 
     end
 
-    it 'should iterate the policy chain' do
+    it 'iterates the policy chain' do
       count = 10
       policy_chain = (1..count).map { |i|
         policy = double 'policy'

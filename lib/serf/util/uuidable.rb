@@ -1,8 +1,7 @@
 require 'base64'
 require 'hashie'
+require 'optser'
 require 'uuidtools'
-
-require 'serf/util/options_extraction'
 
 module Serf
 module Util
@@ -14,13 +13,11 @@ module Util
   #   base64 encoded UUIDs without trailing '='.
   #
   class Uuidable
-    include Serf::Util::OptionsExtraction
-
     attr_reader :uuid_tool
 
     def initialize(*args)
-      extract_options! args
-      @uuid_tool = opts :uuid_tool, UUIDTools::UUID
+      opts = Optser.extract_options! args
+      @uuid_tool = opts.get :uuid_tool, UUIDTools::UUID
     end
 
     ##

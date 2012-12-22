@@ -9,8 +9,8 @@ describe Serf::Util::ProtectedCall do
       result, error = subject.pcall do
         raise 'Some Error Message'
       end
-      result.should be_nil
-      error.should be_a_kind_of(RuntimeError)
+      expect(result).to be_nil
+      expect(error).to be_a_kind_of(RuntimeError)
     end
 
   end
@@ -24,8 +24,8 @@ describe Serf::Util::ProtectedCall do
       result, error = subject.pcall do
         response_parcel
       end
-      result.should == response_parcel
-      error.should be_nil
+      expect(result).to eq(response_parcel)
+      expect(error).to be_nil
     end
 
   end

@@ -3,6 +3,14 @@ serf
 
 Code your Interactors with policy protection.
 
+Serf (a Serf App) -- an individual rack-like call chain.
+* Interactors define your business logic
+* Policies decide access
+* Middleware augment the request processing
+
+Serf Map -- a set of Serfs.
+* A registry of Serfs, mapped by the parcel kinds.
+
 Serf Links
 ----------
 
@@ -23,10 +31,18 @@ the Domain Layer's Entities (Value Objects and Entity Gateways).
 
 1. Include the "Serf::Interactor" module in your class.
 2. Implement the 'call(message)' method.
-3. Return the tuple: (message, kind)
-  a. Hashie::Mash is recommended for the message, nil is acceptable
-  b. The kind is the string representation of the message type,
-    It is optional.
+3. Return the tuple: (kind, message)
+  a. The kind is the string representation of the message type,
+    This field is RECOMMENDED.
+  b. The message field provides detailed return data about the
+    interactor's processing.
+    Hashie::Mash is suggested for the message, nil is acceptable.
+
+The reason that the interactor SHOULD return a kind is to properly
+identify the semantic meaning of the returned message, even if
+said returned message is empty. This also assists the handling
+of response parcels in other pipelines without the need to
+introspect the parcel's message.
 
 Example:
 
@@ -49,7 +65,7 @@ Example:
         response = Hashie::Mash.new
         response.item = item
         # Return the response 'kind' and the response data.
-        return response, 'my_app/events/did_something'
+        return 'my_app/events/did_something', response
       end
     end
 
@@ -127,6 +143,23 @@ Policies only need to implement a single method:
   RECOMMENDED: Use `Serf::Errors::PolicyFailure` error type.
 
 
+Thread Safety
+-------------
+
+Yes and No, it depends:
+* Serf Middleware and Serf Utils are all *Thread Safe* by default.
+  It may not be the case if thread unsafe options are passed in the
+  instantiation of these objects.
+* Built Serfs are *Thread Safe* **if** the developer took care
+  in the creation of the Interactors and in the dependency injection
+  wiring of the Serfs by the builder and loader.
+* The Builder and Loader are *Thread UNSAFE* because it just doesn't make
+  sense that multiple threads should compete/coordinate in the creation
+  and wiring of the created Serfs (Serf Apps) and Serf Maps.
+  This is usually done at start up by the main thread.
+  This includes the utility classes that the loader uses.
+
+
 References
 ==========
 
@@ -190,8 +223,8 @@ The Domain Layer (from DDD):
     and "Application Agnostic Logic" in Entities.
 
 
-Example
-=======
+Serf Builder Example
+====================
 
     # Require our libraries
     require 'json'
@@ -218,16 +251,16 @@ Example
         raise 'Error' if message.raise_an_error
 
         # And return a message as result. Nil is valid response.
-        return { success: true }, 'my_lib/events/success_event'
+        return 'my_lib/events/success_event', { success: true }
 
-        # Optionally just return the message w/o a tagged kind
-        #return { success: true }
+        # Optionally just return the kind
+        # return 'my_lib/events/success_event'
       end
 
     end
 
-    # Create a new builder for this serf app.
-    app = Serf::Builder.new(
+    # Create a new builder for this Serf (aka Serf App).
+    serf = Serf::Builder.new(
       interactor: MyInteractor.new,
       policy_chain: [
         MyPolicy.new
@@ -236,11 +269,11 @@ Example
     # This will submit a 'my_message' message (as a hash) to Serfer.
     # Missing data field will raise an error within the interactor, which
     # will be caught by the serfer.
-    results = app.call nil
+    results = serf.call nil
     my_logger.info "Call 1: #{results.to_json}"
 
     # Here is good result
-    results = app.call(
+    results = serf.call(
       headers: {
         user: 'user_info_1'
       },
@@ -249,7 +282,7 @@ Example
     my_logger.info "Call 2: #{results.to_json}"
 
     # Here get an error that was raised from the interactor
-    results = app.call(
+    results = serf.call(
       headers: {
         user: 'user_info_1'
       },
@@ -257,6 +290,89 @@ Example
         raise_an_error: true
       })
     my_logger.info "Call 3: #{results.to_json}"
+
+
+Serf Loader Example
+===================
+
+Look inside the example subdirectory for the serf files in this example.
+
+
+    ####
+    ## File: example/serfs/create_widget.serf
+    ####
+
+    require 'json'
+    # require 'subsystem/commands/my_create_widget'
+    # Throwing in this class definition to make example work
+    class MyCreateWidget
+
+      def initialize(logger, success_message)
+        @logger = logger
+        @success_message = success_message
+      end
+
+      def call(parcel)
+        @logger.info "In My Create Widget, creating a widget: #{parcel.to_json}"
+        return 'subsystem/events/mywidget_created',
+          { success_message: @success_message }
+      end
+    end
+
+    ##
+    # Registers a serf that responds to a parcel with the given request "kind".
+    # The interactor is instantiated by asking for other components in the
+    # registry and for parameters set in the environment variable.
+    registry.add 'subsystem/requests/create_widget' do |r, env|
+      serf interactor: MyCreateWidget.new(r[:logger], env[:success_message])
+    end
+
+
+    ####
+    ## In another ruby script, where we may load and use serfs.
+    ####
+
+    require 'hashie'
+    require 'json'
+    require 'yell'
+
+    require 'serf/loader'
+
+    # Making a logger for the top level example
+    logger = Yell.new STDOUT
+
+    # Globs to search for serf files
+    globs = [
+      'example/**/*.serf'
+    ]
+    # The serf requests that the loaded Serf Map will handle.
+    serfs = [
+      'subsystem/requests/create_widget'
+    ]
+    # A simple environment variables hash, runtime configuration
+    env = Hashie::Mash.new(
+      success_message: 'Some environment variable like redis URL'
+    )
+
+    # Loading the configuration, creating the serfs.
+    serf_map = Serf::Loader.serfup globs: globs, serfs: serfs, env: env
+
+    # Make an example request parcel
+    request_parcel = {
+      headers: {
+        kind: 'subsystem/requests/create_widget'
+      },
+      message: {
+        name: 'some widget name'
+      }
+    }
+
+    #
+    # Look up the create widget serf by a request kind name,
+    # execute the serf, and log the results
+    serf = serf_map[request_parcel[:headers][:kind]]
+    results = serf.call request_parcel
+    logger.info results.to_json
 
 
 Contributing

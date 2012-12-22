@@ -1,22 +1,22 @@
+require 'optser'
+
 require 'serf/middleware/error_handler'
 require 'serf/middleware/parcel_freezer'
 require 'serf/middleware/parcel_masher'
 require 'serf/middleware/policy_checker'
+require 'serf/middleware/request_timer'
 require 'serf/middleware/uuid_tagger'
 require 'serf/serfer'
-require 'serf/util/options_extraction'
 
 module Serf
 
   class Builder
-    include Serf::Util::OptionsExtraction
-
     def initialize(*args, &block)
-      extract_options! args
+      opts = Optser.extract_options! args
 
-      @run = opts :interactor
+      @run = opts.get :interactor
       @use = []
-      @policy_chain = opts :policy_chain, []
+      @policy_chain = opts.get :policy_chain, []
 
       if block_given?
         instance_eval(&block)
@@ -36,6 +36,7 @@ module Serf
     #   use Serf::Serfer
     #
     def use_defaults
+      use Serf::Middleware::RequestTimer
       use Serf::Middleware::ParcelMasher
       use Serf::Middleware::UuidTagger
       use Serf::Middleware::ParcelFreezer

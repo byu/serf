@@ -1,4 +1,5 @@
 require 'hashie'
+require 'optser'
 
 require 'serf/parcel_builder'
 require 'serf/util/error_handling'
@@ -13,7 +14,6 @@ module Middleware
   #
   class ErrorHandler
     include Serf::Util::ErrorHandling
-    include Serf::Util::OptionsExtraction
 
     attr_reader :app
     attr_reader :parcel_builder
@@ -23,12 +23,12 @@ module Middleware
     # @param app the app
     #
     def initialize(app, *args)
-      extract_options! args
+      opts = Optser.extract_options! args
       @app = app
 
       # Tunable knobs
-      @parcel_builder = opts(:parcel_builder) { Serf::ParcelBuilder.new }
-      @uuidable = opts(:uuidable) { Serf::Util::Uuidable.new }
+      @parcel_builder = opts.get(:parcel_builder) { Serf::ParcelBuilder.new }
+      @uuidable = opts.get(:uuidable) { Serf::Util::Uuidable.new }
     end
 
     def call(parcel)

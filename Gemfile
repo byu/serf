@@ -26,4 +26,5 @@ group :development, :test do
 
   # Required by our Specs
   gem 'json-schema'
+  gem 'yell'
 end

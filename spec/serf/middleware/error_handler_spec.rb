@@ -22,7 +22,7 @@ describe Serf::Middleware::ErrorHandler do
 
       it 'has an error parcel kind' do
         parcel = subject.call({})
-        parcel[:headers][:kind].should == 'serf/events/caught_error'
+        expect(parcel[:headers][:kind]).to eq('serf/events/caught_error')
       end
     end
 
@@ -38,7 +38,7 @@ describe Serf::Middleware::ErrorHandler do
 
       it 'returns a good response parcel' do
         parcel = subject.call({})
-        parcel.should == response_parcel
+        expect(parcel).to eq(response_parcel)
       end
 
     end

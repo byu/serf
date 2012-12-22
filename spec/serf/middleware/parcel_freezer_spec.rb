@@ -9,10 +9,10 @@ describe Serf::Middleware::ParcelFreezer do
     it 'freezes the parcel' do
       parcel = {}
       app = described_class.new proc { |parcel|
-        parcel.frozen?.should be_true
+        expect(parcel.frozen?).to be_true
       }
       app.call parcel
-      parcel.frozen?.should be_true
+      expect(parcel.frozen?).to be_true
     end
 
   end

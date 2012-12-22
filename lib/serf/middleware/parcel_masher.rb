@@ -1,6 +1,5 @@
 require 'hashie'
-
-require 'serf/util/options_extraction'
+require 'optser'
 
 module Serf
 module Middleware
@@ -9,8 +8,6 @@ module Middleware
   # Middleware to add uuids to the headers of the parcel hash.
   #
   class ParcelMasher
-    include Serf::Util::OptionsExtraction
-
     attr_reader :app
     attr_reader :masher_class
 
@@ -18,9 +15,9 @@ module Middleware
     # @param app the app
     #
     def initialize(app, *args)
-      extract_options! args
+      opts = Optser.extract_options! args
       @app = app
-      @masher_class = opts :masher_class, Hashie::Mash
+      @masher_class = opts.get :masher_class, Hashie::Mash
     end
 
     ##
