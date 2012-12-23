@@ -23,7 +23,7 @@ Gem::Specification.new do |gem|
   ]
 
   gem.add_runtime_dependency('hashie', ['>= 1.2.0'])
-  gem.add_runtime_dependency('ice_nine', ['>= 0.4.0'])
+  gem.add_runtime_dependency('ice_nine', ['>= 0.6.0'])
   gem.add_runtime_dependency('optser', ['>= 0.1.0'])
   gem.add_runtime_dependency('uuidtools', ['>= 2.1.3'])
 end
