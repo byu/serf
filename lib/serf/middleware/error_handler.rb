@@ -1,9 +1,8 @@
 require 'hashie'
 require 'optser'
 
-require 'serf/parcel_builder'
+require 'serf/parcel_factory'
 require 'serf/util/error_handling'
-require 'serf/util/uuidable'
 
 module Serf
 module Middleware
@@ -16,8 +15,7 @@ module Middleware
     include Serf::Util::ErrorHandling
 
     attr_reader :app
-    attr_reader :parcel_builder
-    attr_reader :uuidable
+    attr_reader :parcel_factory
 
     ##
     # @param app the app
@@ -27,8 +25,7 @@ module Middleware
       @app = app
 
       # Tunable knobs
-      @parcel_builder = opts.get(:parcel_builder) { Serf::ParcelBuilder.new }
-      @uuidable = opts.get(:uuidable) { Serf::Util::Uuidable.new }
+      @parcel_factory = opts.get(:parcel_factory) { Serf::ParcelFactory.new }
     end
 
     def call(parcel)
@@ -42,9 +39,10 @@ module Middleware
 
       # We got an error message instead, so build out the headers
       # and return the parcel.
-      error_headers = uuidable.create_uuids parcel[:headers]
-      error_headers[:kind] = 'serf/events/caught_error'
-      return parcel_builder.build error_headers, error_message
+      return parcel_factory.create(
+        kind: 'serf/events/caught_error',
+        parent: parcel,
+        message: error_message)
     end
 
   end

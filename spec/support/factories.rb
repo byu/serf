@@ -15,6 +15,8 @@ FactoryGirl.define do
   factory :random_parcel, class: Hashie::Mash do
     headers {{
       uuid: generate(:random_string),
+      origin_uuid: generate(:random_string),
+      parent_uuid: generate(:random_string),
       kind: generate(:random_string)
     }}
     message {{
@@ -24,7 +26,10 @@ FactoryGirl.define do
 
   factory :random_headers, class: Hashie::Mash do
     uuid { generate(:random_string) }
+    origin_uuid { generate(:random_string) }
+    parent_uuid { generate(:random_string) }
     kind { generate(:random_string) }
+    option_a { generate(:random_string) }
   end
 
   factory :random_message, class: Hashie::Mash do

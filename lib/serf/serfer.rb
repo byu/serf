@@ -1,8 +1,6 @@
-require 'hashie'
 require 'optser'
 
-require 'serf/parcel_builder'
-require 'serf/util/uuidable'
+require 'serf/parcel_factory'
 
 module Serf
 
@@ -11,8 +9,7 @@ module Serf
   #
   class Serfer
     attr_reader :interactor
-    attr_reader :parcel_builder
-    attr_reader :uuidable
+    attr_reader :parcel_factory
 
     def initialize(interactor, *args)
       opts = Optser.extract_options! args
@@ -21,26 +18,24 @@ module Serf
       @interactor = interactor
 
       # Tunable knobs
-      @parcel_builder = opts.get(:parcel_builder) { Serf::ParcelBuilder.new }
-      @uuidable = opts.get(:uuidable) { Serf::Util::Uuidable.new }
+      @parcel_factory = opts.get(:parcel_factory) { Serf::ParcelFactory.new }
     end
 
     ##
     # Rack-like call to run the Interactor's use-case.
     #
     def call(parcel)
-      headers = parcel[:headers]
-      message = parcel[:message]
-
       # 1. Execute interactor
-      response_kind, response_message = interactor.call message
+      response_kind, response_message = interactor.call parcel[:message]
 
-      # 2. Create the response headers
-      response_headers = uuidable.create_uuids headers
-      response_headers[:kind] = response_kind
-
-      # 3. Return the response headers and message as a parcel
-      return parcel_builder.build response_headers, response_message
+      # 2. Return a new response parcel with:
+      #   a. uuids set from parent parcel
+      #   b. kind set to response kind
+      #   c. the message set to response_message
+      return parcel_factory.create(
+        parent: parcel,
+        kind: response_kind,
+        message: response_message)
     end
 
   end
