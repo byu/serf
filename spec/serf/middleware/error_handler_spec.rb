@@ -31,7 +31,7 @@ describe Serf::Middleware::ErrorHandler do
 
       it 'has an error parcel kind' do
         parcel = subject.call({})
-        expect(parcel[:headers][:kind]).to eq('serf/events/caught_error')
+        expect(parcel[:kind]).to eq('serf/events/caught_error')
       end
 
       it 'uses parcel factory w/ kind, parent, and error message' do

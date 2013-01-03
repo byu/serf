@@ -5,7 +5,7 @@ module Serf
 module Middleware
 
   ##
-  # Middleware to add uuids to the headers of the parcel hash.
+  # Middleware to coerce the parcel to Hashie::Mash.
   #
   class ParcelMasher
     attr_reader :app
@@ -22,10 +22,9 @@ module Middleware
 
     ##
     # Coerces the parcel into a Hashie::Mash, makes sure that
-    # the headers and message are set, and then passes it along the chain.
+    # the message field is set, and then passes it along the chain.
     def call(parcel)
       mashed_parcel = masher_class.new parcel
-      mashed_parcel[:headers] ||= {}
       mashed_parcel[:message] ||= {}
       app.call mashed_parcel
     end

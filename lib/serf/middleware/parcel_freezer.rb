@@ -5,7 +5,7 @@ module Serf
 module Middleware
 
   ##
-  # Middleware to add uuids to the headers of the parcel hash.
+  # Middleware to add uuids to freeze the parcel.
   #
   class ParcelFreezer
     attr_reader :app

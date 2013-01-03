@@ -27,7 +27,7 @@ The piece of work to be done. This takes in a request, represented by the
 "Message" within the given "Parcel", and returns an "Event" as its result.
 The Interactor is the "Domain Controller" with respect to performing
 Domain Layer business logic in coordinating and interacting with
-the Domain Layer's Entities (Value Objects and Entity Gateways).
+the Domain Layer's Model (Entities, Value Objects and Entity Gateways).
 
 1. Include the "Serf::Interactor" module in your class.
 2. Implement the 'call(parcel)' method.
@@ -51,11 +51,14 @@ introspect the parcel's message.
 Example:
 
     require 'hashie'
+    require 'optser'
 
     class MyInteractor
+      attr_reader :model
 
-      def initialize(*contructor_params, &block)
+      def initialize(*args, &block)
         # Do some validation here, or extra parameter setting with the args
+        opts = Optser.extract_options! args
         @model = opts :model, MyModel
       end
 
@@ -63,7 +66,7 @@ Example:
         # Do something w/ the message and opts.
         # Simple data structures for the Interactor's "Request".
 
-        item = @model.find parcel.message.model_id
+        item = model.find parcel.message.model_id
 
         # Make a simple data structure as the Interactor "Response".
         response = Hashie::Mash.new
@@ -84,13 +87,30 @@ This simplifies marshalling over the network. It also gives us easier
 semantics in defining Request and Responses without need of extra classes,
 code, etc.
 
-The Parcel in Ruby (Datastructure) is represented simply as:
+The Parcel in Ruby (Datastructure) is represented simply as a hash.
 
-* A 2 element Hash: { headers: headers, message: message }.
+* The *message* is stored in the "message" property of the parcel.
+* And  *header* fields exist in the top level namespace of the parcel.
 
-NOTE: Hashie::Mash is *Awesome*. (https://github.com/intridea/hashie)
-NOTE: Serf passes the parcel as frozen Hashie::Mash instances
-  to Interactor' call method by default.
+For example,
+
+    {
+      kind: 'serf/messages/my_kind',
+      uuid: 'gvGshlXTEeKj-AQMzuOZ7g',
+      another_header_field: '123456',
+      message: {
+        # Some message object
+      }
+    }
+
+Serf *RESERVES* the following set of header names:
+
+* kind
+* message
+* uuid
+* parent_uuid
+* origin_uuid
+* serf_*
 
 *Messages* are the representation of a Business Request or Business Event.
 
@@ -106,19 +126,54 @@ be in the message.
 *Headers* are the processing meta data that is associated with a Message.
 
 Headers provide information that would assist in processing, tracking
-a Message. But does not provide business relevant information to
-the Request or Event Message.
+a Message. But SHOULD NOT provide business relevant information to
+the Interactor for it to process a Request or Event Message.
 
-  RECOMMENDED: Recommended to be placed in headers is the 'kind' field.
-
-The "kind" field identifies the ontological meaning of the message, which
+*kind* field identifies the ontological meaning of the message, which
 may be used to route messages over messaging channels to Interactors.
 The convention is 'mymodule/requests/my_business_request' for Requests,
 and 'mymodule/events/my_business_event' for Events.
 
-Examples are:
-* UUIDs to track request and events, providing a sequential order of
-  execution of commands. (Already Implemented by Serf).
+*UUIDs* are used to track request and events, providing a sequential
+order of execution of commands. Already Implemented by Serf middleware.
+
+* uuid - The identification of the specific parcel.
+* parent_uuid - The identification of the parcel that caused the current
+  parcel to be generated.
+* origin_uuid - The original parcel (request or event) that started
+  the chain of requests and event parcels to be generated from Interactors
+  processing.
+
+The format of the UUIDs is Serf's `coded_uuid`. It is a URI safe base64
+string encoded from a UTC timestamped Type 1 UUID. This allows for both
+good uniqueness and timestamp auditing (if servers are network time synced).
+
+*serf headers* are prefixed with the "serf_" string. Example:
+
+    {
+      kind: 'my_lib/messages/my_kind',
+      serf_elapsed_time: 12034,
+      message: {
+      }
+    }
+
+Applications can add their own headers to parcels for application
+specific tracking. Namespacing SHOULD be used.
+
+For example,
+
+    {
+      kind: 'my_lib/messages/my_kind',
+      my_middleware: {
+        data_point_a: 1234
+      },
+      my_middleware_data_poing_b: 5678,
+      message: {
+      }
+    }
+
+Examples of other header uses:
+
 * Current User that sent the request. For authentication and authorization.
 * Host and Application Server that is processing this request.
 
@@ -133,6 +188,10 @@ chained requests to other Interactors. For example, the UUIDs in headers in
 "Request A" given to "Interactor A" can be used to generate new tracking
 UUID headers for "Request B" that is sent to "Interactor B". This allows
 us to track the origin point of any piece of processing request and event..
+
+NOTE: Hashie::Mash is *Awesome*. (https://github.com/intridea/hashie)
+NOTE: Serf passes the parcel as frozen Hashie::Mash instances
+  to Interactor' call method by default.
 
 Policies
 --------
@@ -249,7 +308,7 @@ Serf Builder Example
     class MyPolicy
 
       def check!(parcel)
-        raise 'Policy Error: User is nil' unless parcel.headers.user
+        raise 'Policy Error: User is nil' unless parcel.current_user
       end
 
     end
@@ -284,18 +343,14 @@ Serf Builder Example
 
     # Here is good result
     results = serf.call(
-      headers: {
-        user: 'user_info_1'
-      },
+      current_user: 'user_info_1',
       message: {
       })
     my_logger.info "Call 2: #{results.to_json}"
 
     # Here get an error that was raised from the interactor
     results = serf.call(
-      headers: {
-        user: 'user_info_1'
-      },
+      current_user: 'user_info_1',
       message: {
         raise_an_error: true
       })
@@ -369,9 +424,7 @@ Look inside the example subdirectory for the serf files in this example.
 
     # Make an example request parcel
     request_parcel = {
-      headers: {
-        kind: 'subsystem/requests/create_widget'
-      },
+      kind: 'subsystem/requests/create_widget',
       message: {
         name: 'some widget name'
       }
@@ -380,7 +433,7 @@ Look inside the example subdirectory for the serf files in this example.
     #
     # Look up the create widget serf by a request kind name,
     # execute the serf, and log the results
-    serf = serf_map[request_parcel[:headers][:kind]]
+    serf = serf_map[request_parcel[:kind]]
     results = serf.call request_parcel
     logger.info results.to_json
 

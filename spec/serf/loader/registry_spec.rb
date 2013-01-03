@@ -4,7 +4,7 @@ require 'serf/loader/registry'
 
 describe Serf::Loader::Registry do
   let(:random_message) {
-    FactoryGirl.create :random_message
+    FactoryGirl.create :random_hash
   }
 
   context '#add' do

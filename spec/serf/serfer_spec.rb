@@ -9,21 +9,13 @@ describe Serf::Serfer do
 
   describe '#call' do
     let(:request_parcel) {
-      Hashie::Mash.new(
-        headers: request_headers,
-        message: request_message)
-    }
-    let(:request_headers) {
-      FactoryGirl.create :random_headers
-    }
-    let(:request_message) {
-      FactoryGirl.create :random_message
+      FactoryGirl.create :random_parcel
     }
     let(:response_kind) {
       SecureRandom.hex
     }
     let(:response_message) {
-      FactoryGirl.create :random_message
+      FactoryGirl.create :random_hash
     }
     let(:disconnected_response_parcel) {
       FactoryGirl.create :random_parcel
@@ -50,16 +42,14 @@ describe Serf::Serfer do
       # We also expect that the uuid is some value
       # We also expect that the response parent uuid matches request uuid
       # We also expect that the response origin uuid matches request origin's.
-      expect(parcel.headers.kind).to eq(response_kind)
-      expect(parcel.headers.uuid).to_not be_nil
-      expect(parcel.headers.origin_uuid).
-        to eq(request_parcel.headers.origin_uuid)
-      expect(parcel.headers.parent_uuid).
-        to eq(request_parcel.headers.uuid)
+      expect(parcel.kind).to eq(response_kind)
+      expect(parcel.uuid).to_not be_nil
+      expect(parcel.origin_uuid).to eq(request_parcel.origin_uuid)
+      expect(parcel.parent_uuid).to eq(request_parcel.uuid)
       expect(parcel.message).to eq(response_message)
     end
 
-    it 'uses parcel factory w/ message and headers' do
+    it 'uses parcel factory w/ kind, parent and message' do
       mock_parcel_factory = double 'parcel_factory'
       mock_parcel_factory.
         should_receive(:create).

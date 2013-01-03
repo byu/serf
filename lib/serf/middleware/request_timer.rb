@@ -3,6 +3,9 @@ require 'optser'
 module Serf
 module Middleware
 
+  ##
+  # Middleware to time the execution of the remaining stack, saving the
+  # timing into the 'serf_elapsed_time' field in the parcel.
   class RequestTimer
     attr_reader :app
     attr_reader :timer
@@ -16,7 +19,7 @@ module Middleware
     def call(parcel)
       t = timer.start
       response_parcel = app.call parcel
-      response_parcel.headers[:elapsed_time] = t.mark
+      response_parcel[:serf_elapsed_time] = t.mark
       return response_parcel
     end
 

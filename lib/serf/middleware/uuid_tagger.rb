@@ -7,7 +7,7 @@ module Serf
 module Middleware
 
   ##
-  # Middleware to add uuids to the headers of the parcel hash.
+  # Middleware to add the uuid to the parcel hash if not already present.
   #
   class UuidTagger
     attr_reader :app
@@ -23,13 +23,13 @@ module Middleware
     end
 
     def call(parcel)
-      # Makes sure our parcel has headers
-      parcel[:headers] ||= {}
+      # Duplicate the parcel
+      parcel = parcel.dup
 
-      # Tag headers with a UUID unless it already has one
-      parcel[:headers][:uuid] ||= uuidable.create_coded_uuid
+      # Tag with a UUID unless it already has one
+      parcel[:uuid] ||= uuidable.create_coded_uuid
 
-      # Pass on the given parcel with newly annotated headers
+      # Pass on the given parcel with the uuid
       app.call parcel
     end
 

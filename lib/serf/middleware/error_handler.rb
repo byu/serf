@@ -37,8 +37,7 @@ module Middleware
       # Return on success
       return response_parcel if response_parcel
 
-      # We got an error message instead, so build out the headers
-      # and return the parcel.
+      # We got an error message, so build out and return the error parcel
       return parcel_factory.create(
         kind: 'serf/events/caught_error',
         parent: parcel,
