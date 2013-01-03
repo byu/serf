@@ -6,10 +6,10 @@ describe Serf::Middleware::UuidTagger do
 
   describe '#call' do
 
-    it 'adds uuid the parcel header' do
+    it 'adds uuid to the parcel' do
       parcel = {}
       app = described_class.new proc { |parcel|
-        expect(parcel[:headers][:uuid]).to_not be_nil
+        expect(parcel[:uuid]).to_not be_nil
       }
       app.call parcel
     end
@@ -17,12 +17,10 @@ describe Serf::Middleware::UuidTagger do
     it 'does not change the existing uuid' do
       uuid = '0d3eccaabcc46c3bcbe2a53c4505e352'
       parcel = {
-        headers: {
-          uuid: uuid
-        }
+        uuid: uuid
       }
       app = described_class.new proc { |parcel|
-        expect(parcel[:headers][:uuid]).to eq(uuid)
+        expect(parcel[:uuid]).to eq(uuid)
       }
       app.call parcel
     end

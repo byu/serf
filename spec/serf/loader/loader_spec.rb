@@ -9,7 +9,7 @@ describe Serf::Loader::Loader do
 
   context '#serfup Serf Map' do
     let(:random_message) {
-      FactoryGirl.create :random_message
+      FactoryGirl.create :random_hash
     }
     subject {
       Serf::Loader::Loader.new.serfup(
@@ -39,7 +39,7 @@ describe Serf::Loader::Loader do
 
       results = serf.call({})
       expect(results).to_not be_nil
-      expect(results.headers.kind).to_not eq('serf/events/caught_error')
+      expect(results.kind).to_not eq('serf/events/caught_error')
     end
 
     it 'returns nil on not found parcel kind' do
@@ -49,7 +49,7 @@ describe Serf::Loader::Loader do
     it 'passes in a good environment' do
       serf = subject['subsystem/requests/create_widget']
       results = serf.call({})
-      expect(results.headers.kind).to eq('subsystem/events/mywidget_created')
+      expect(results.kind).to eq('subsystem/events/mywidget_created')
       expect(results.message.success_message).to eq(random_message)
     end
   end

@@ -8,6 +8,18 @@ module Serf
   ##
   # Creates Parcels as Hashie::Mash objects with headers and messages.
   #
+  # The headers this factory sets are:
+  # * kind
+  # * uuid
+  # * parent_uuid
+  # * origin_uuid
+  #
+  # The message field:
+  # * message
+  #
+  # The UUID fields are created using the uuidable processed from the parent
+  # parcel.
+  #
   class ParcelFactory
     attr_reader :mash_class
     attr_reader :uuidable
@@ -28,16 +40,14 @@ module Serf
       headers = opts.get :headers, {}
       message = opts.get :message, {}
 
-      # Coerce to mashes.
-      parent = mash_class.new(parent) unless parent.kind_of? mash_class
-      headers = mash_class.new(headers) unless headers.kind_of? mash_class
+      # Create a new parcel, with the header fields as base of object.
+      # Merge in the new UUIDs, overwriting anything set in headers.
+      # Merge in the kind and message, overwriting anything already set.
+      parcel = mash_class.new(headers)
+      parcel.merge! uuidable.create_uuids(parent)
+      parcel.merge! kind: kind, message: message
 
-      # Create a new headers object w/ uuids set from the parent and kind.
-      headers = headers.merge uuidable.create_uuids(parent.headers)
-      headers.kind = kind
-
-      # Return a final parcel, coerced as a mash.
-      mash_class.new headers: headers, message: message
+      return parcel
     end
 
   end

@@ -16,10 +16,9 @@ describe Serf::Middleware::ParcelMasher do
       app.call parcel
     end
 
-    it 'autocreate headers and message' do
+    it 'autocreate message field' do
       parcel = nil
       app = described_class.new proc { |parcel|
-        expect(parcel.headers).to be_a_kind_of(Hashie::Mash)
         expect(parcel.message).to be_a_kind_of(Hashie::Mash)
       }
       app.call parcel

@@ -1,4 +1,5 @@
 require 'hashie'
+require 'optser'
 
 module Serf
 module Loader
@@ -37,10 +38,10 @@ module Loader
   #     # Now obtain the build serf, all wired up, by the parcel kind
   #     # and execute the found serf.
   #     parcel = {
-  #       headers: { kind: 'subsystem/request/my_request' },
+  #       kind: 'subsystem/request/my_request',
   #       message: {}
   #     }
-  #     serf = registry[parcel[:headers][:kind]]
+  #     serf = registry[parcel[:kind]]
   #     puts serf.call(parcel)
   #
   class Registry
