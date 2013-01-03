@@ -26,7 +26,7 @@ module Serf
     #
     def call(parcel)
       # 1. Execute interactor
-      response_kind, response_message = interactor.call parcel[:message]
+      response_kind, response_message = interactor.call parcel
 
       # 2. Return a new response parcel with:
       #   a. uuids set from parent parcel
