@@ -1,4 +1,4 @@
 Serf
-  Copyright 2011-2012 Benjamin Yu
+  Copyright 2011-2013 Benjamin Yu
   This software includes code written by Benjamin Yu <http://benjaminyu.org/>
   covered under the Apache License <http://www.apache.org/licenses/LICENSE-2.0>.
