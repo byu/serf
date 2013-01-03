@@ -23,20 +23,24 @@ Serf Links
 Interactors
 -----------
 
-The piece of work to be done. This takes in a request, represented
-by a "Message", and returns an "Event" as its result. The Interactor
-is the "Domain Controller" with respect to performing
+The piece of work to be done. This takes in a request, represented by the
+"Message" within the given "Parcel", and returns an "Event" as its result.
+The Interactor is the "Domain Controller" with respect to performing
 Domain Layer business logic in coordinating and interacting with
 the Domain Layer's Entities (Value Objects and Entity Gateways).
 
 1. Include the "Serf::Interactor" module in your class.
-2. Implement the 'call(message)' method.
+2. Implement the 'call(parcel)' method.
 3. Return the tuple: (kind, message)
   a. The kind is the string representation of the message type,
     This field is RECOMMENDED.
   b. The message field provides detailed return data about the
     interactor's processing.
     Hashie::Mash is suggested for the message, nil is acceptable.
+  c. By default, returning nil for both kind and message will still
+    result in a response parcel signifying that some Interactor received
+    the inbound parcel. But that is just a almost worthless piece of
+    information for the observer.
 
 The reason that the interactor SHOULD return a kind is to properly
 identify the semantic meaning of the returned message, even if
@@ -55,11 +59,11 @@ Example:
         @model = opts :model, MyModel
       end
 
-      def call(message)
+      def call(parcel)
         # Do something w/ the message and opts.
         # Simple data structures for the Interactor's "Request".
 
-        item = @model.find message.model_id
+        item = @model.find parcel.message.model_id
 
         # Make a simple data structure as the Interactor "Response".
         response = Hashie::Mash.new
@@ -82,7 +86,7 @@ code, etc.
 
 The Parcel in Ruby (Datastructure) is represented simply as:
 
-* A 2 element Hash: { headers: headers, message: message}.
+* A 2 element Hash: { headers: headers, message: message }.
 
 NOTE: Hashie::Mash is *Awesome*. (https://github.com/intridea/hashie)
 NOTE: Serf passes the parcel as frozen Hashie::Mash instances
@@ -123,6 +127,12 @@ that hosts the Interactors. The Interactors themselves do not
 return any headers in the response. The Interactors are tasked to provide
 only business relevant data in the Event messages they return.
 
+However, the full request parcel is given to the Interactors so the
+request's header information can be used to annotate subsequent
+chained requests to other Interactors. For example, the UUIDs in headers in
+"Request A" given to "Interactor A" can be used to generate new tracking
+UUID headers for "Request B" that is sent to "Interactor B". This allows
+us to track the origin point of any piece of processing request and event..
 
 Policies
 --------
@@ -247,8 +257,8 @@ Serf Builder Example
     # my_lib/my_interactor.rb
     class MyInteractor
 
-      def call(message)
-        raise 'Error' if message.raise_an_error
+      def call(parcel)
+        raise 'Error' if parcel.message.raise_an_error
 
         # And return a message as result. Nil is valid response.
         return 'my_lib/events/success_event', { success: true }

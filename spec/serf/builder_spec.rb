@@ -32,7 +32,7 @@ describe Serf::Builder do
 
       it 'runs the app' do
         response = subject.to_app.call request_parcel
-        expect(response.message).to eq(request_parcel.message)
+        expect(response.message).to eq(request_parcel)
         expect(response.headers.kind).to eq(response_kind)
       end
 

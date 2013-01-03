@@ -29,9 +29,9 @@ describe Serf::Serfer do
       FactoryGirl.create :random_parcel
     }
 
-    it 'calls app with message' do
+    it 'calls app with the parcel' do
       mock_app = double 'mock_app'
-      mock_app.should_receive(:call).with(request_message)
+      mock_app.should_receive(:call).with(request_parcel)
       serfer = described_class.new mock_app
       serfer.call request_parcel
     end
@@ -40,7 +40,7 @@ describe Serf::Serfer do
       mock_app = double 'mock_app'
       mock_app.
         should_receive(:call).
-        with(request_message).
+        with(request_parcel).
         and_return([response_kind, response_message])
       serfer = described_class.new mock_app
 
