@@ -28,19 +28,38 @@ module Serf
     ##
     # Set a default chain of the following:
     #
-    #   use Serf::Middleware::ParcelMasher
-    #   use Serf::Middleware::UuidTagger
-    #   use Serf::Middleware::ParcelFreezer
-    #   use Serf::Middleware::ErrorHandler
-    #   use Serf::Middleware::PolicyChecker, @policy_chain
-    #   use Serf::Serfer
+    #   use_default_middleware
+    #   use_default_serfer_stage
     #
     def use_defaults
+      use_default_middleware
+      use_default_serfer_stage
+    end
+
+    ##
+    # Add the following middleware to the chain:
+    #
+    #   use Serf::Middleware::RequestTimer
+    #   use Serf::Middleware::ParcelMasher
+    #   use Serf::Middleware::UuidTagger
+    #   use Serf::Middleware::ErrorHandler
+    #
+    def use_default_middleware
       use Serf::Middleware::RequestTimer
       use Serf::Middleware::ParcelMasher
       use Serf::Middleware::UuidTagger
-      use Serf::Middleware::ParcelFreezer
       use Serf::Middleware::ErrorHandler
+    end
+
+    ##
+    # Add the following middleware to the chain:
+    #
+    #   use Serf::Middleware::ParcelFreezer
+    #   use Serf::Middleware::PolicyChecker, @policy_chain
+    #   use Serf::Serfer
+    #
+    def use_default_serfer_stage
+      use Serf::Middleware::ParcelFreezer
       use Serf::Middleware::PolicyChecker, policy_chain: @policy_chain
       use Serf::Serfer
     end
