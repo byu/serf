@@ -11,6 +11,12 @@ describe Serf::Serfer do
     let(:request_parcel) {
       FactoryGirl.create :random_parcel
     }
+    let(:versioned_response_kind_version) {
+      SecureRandom.hex
+    }
+    let(:versioned_response_kind) {
+      "#{response_kind}\##{versioned_response_kind_version}"
+    }
     let(:response_kind) {
       SecureRandom.hex
     }
@@ -127,6 +133,30 @@ describe Serf::Serfer do
       serfer = described_class.new(
         lambda { |obj|
           return response_kind, response_message, response_headers
+        },
+        parcel_factory: mock_parcel_factory)
+      parcel = serfer.call request_parcel
+
+      expect(parcel).to eq(disconnected_response_parcel)
+    end
+
+    it 'moves version info from a versioned kind to the headers' do
+      mock_parcel_factory = double 'parcel_factory'
+      mock_parcel_factory.
+        should_receive(:create).
+        with({
+          parent: request_parcel,
+          kind: response_kind,
+          message: response_message,
+          headers: {
+            version: versioned_response_kind_version
+          }
+        }).
+        and_return(disconnected_response_parcel)
+
+      serfer = described_class.new(
+        lambda { |obj|
+          return versioned_response_kind, response_message
         },
         parcel_factory: mock_parcel_factory)
       parcel = serfer.call request_parcel

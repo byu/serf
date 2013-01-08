@@ -28,7 +28,18 @@ module Serf
       # 1. Execute interactor
       response_kind, response_message, response_headers = interactor.call parcel
 
-      # 2. Return a new response parcel with:
+      # 2. Extract a possible version embedded in the response_kind.
+      #   This is sugar syntax for kind and version.
+      if response_kind
+        kind_part, version_part = response_kind.split '#', 2
+        response_kind = kind_part if version_part
+        if version_part
+          response_headers ||= {}
+          response_headers[:version] = version_part
+        end
+      end
+
+      # 3. Return a new response parcel with:
       #   a. uuids set from parent parcel
       #   b. kind set to response kind
       #   c. the message set to response_message
