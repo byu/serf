@@ -26,16 +26,18 @@ module Serf
     #
     def call(parcel)
       # 1. Execute interactor
-      response_kind, response_message = interactor.call parcel
+      response_kind, response_message, response_headers = interactor.call parcel
 
       # 2. Return a new response parcel with:
       #   a. uuids set from parent parcel
       #   b. kind set to response kind
       #   c. the message set to response_message
+      #   d. add extra headers to the parcel
       return parcel_factory.create(
         parent: parcel,
         kind: response_kind,
-        message: response_message)
+        message: response_message,
+        headers: response_headers)
     end
 
   end
