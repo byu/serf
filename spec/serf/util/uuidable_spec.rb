@@ -25,13 +25,18 @@ describe Serf::Util::Uuidable do
     let(:coded_uuid) {
       'RIEHuF5-EeKLPQQMzuOZ7g'
     }
-    let(:rational_time) {
-      Rational(1424166190604169, 1048576)
+    let(:time_seconds) {
+      1358190718
+    }
+    let(:time_nsec) {
+      273324012
     }
 
     it 'returns a valid time object' do
       time = subject.coded_uuid_time coded_uuid
-      expect(time.to_r).to eq(rational_time)
+      # Check that we have a good timestamp in seconds and nanoseconds
+      expect(time.to_i).to eq(time_seconds)
+      expect(time.tv_nsec).to eq(time_nsec)
     end
 
   end
