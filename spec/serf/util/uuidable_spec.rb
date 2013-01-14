@@ -28,15 +28,15 @@ describe Serf::Util::Uuidable do
     let(:time_seconds) {
       1358190718
     }
-    let(:time_nsec) {
-      273324012
+    let(:time_usec) {
+      273324
     }
 
     it 'returns a valid time object' do
       time = subject.coded_uuid_time coded_uuid
       # Check that we have a good timestamp in seconds and nanoseconds
       expect(time.to_i).to eq(time_seconds)
-      expect(time.tv_nsec).to eq(time_nsec)
+      expect(time.tv_usec).to eq(time_usec)
     end
 
   end
