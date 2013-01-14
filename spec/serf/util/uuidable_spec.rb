@@ -21,6 +21,21 @@ describe Serf::Util::Uuidable do
 
   end
 
+  describe '#coded_uuid_time' do
+    let(:coded_uuid) {
+      'RIEHuF5-EeKLPQQMzuOZ7g'
+    }
+    let(:rational_time) {
+      Rational(1424166190604169, 1048576)
+    }
+
+    it 'returns a valid time object' do
+      time = subject.coded_uuid_time coded_uuid
+      expect(time.to_r).to eq(rational_time)
+    end
+
+  end
+
   describe '#create_uuids' do
 
     it 'works with no parent' do

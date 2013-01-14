@@ -43,6 +43,18 @@ module Util
     end
 
     ##
+    # Parses a coded_uuid and returns a time object for the Timestamped UUID.
+    #
+    # @param coded_uuid the coded uuid from which to get a time.
+    #
+    # @return ruby time object for which the coded_uuid was timestamped.
+    #
+    def coded_uuid_time(coded_uuid)
+      uuid = parse_coded_uuid coded_uuid
+      uuid.timestamp.utc
+    end
+
+    ##
     # Create a new set of uuids.
     #
     def create_uuids(parent=nil)
