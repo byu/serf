@@ -1,3 +1,5 @@
+require 'socket'
+
 require 'serf/util/protected_call'
 
 module Serf
@@ -31,6 +33,7 @@ module Util
         error: e.class.to_s,
         message: e.message,
         process_env: ENV.to_hash,
+        hostname: Socket.gethostname,
         backtrace: e.backtrace.join("\n")
       }
     end

@@ -12,7 +12,12 @@ describe Serf::Util::ErrorHandling do
       expect(result).to be_nil
       JsonSchemaTester.new.validate_for!(
         'serf/events/caught_error',
-        error)
+        Hashie::Mash.new(error))
+      expect(error[:error]).to be_kind_of(String)
+      expect(error[:message]).to be_kind_of(String)
+      expect(error[:process_env]).to be_kind_of(Hash)
+      expect(error[:hostname]).to be_kind_of(String)
+      expect(error[:backtrace]).to be_kind_of(String)
     end
 
   end
