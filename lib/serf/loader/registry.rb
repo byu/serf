@@ -1,6 +1,8 @@
 require 'hashie'
 require 'optser'
 
+require 'serf/errors/load_failure'
+
 module Serf
 module Loader
 
@@ -47,6 +49,7 @@ module Loader
   class Registry
     attr_reader :blocks
     attr_reader :values
+    attr_reader :env
 
     def initialize(*args)
       opts = Optser.extract_options! args
@@ -62,7 +65,7 @@ module Loader
     # @params &block the proc that generates the component instance.
     #
     def add(name, &block)
-      @blocks[name.to_sym] = block
+      blocks[name.to_sym] = block
     end
 
     ##
@@ -73,11 +76,18 @@ module Loader
     #
     def [](name)
       name = name.to_sym
-      return @values[name] if @values.has_key? name
+      return values[name] if values.has_key? name
       # No memoized value, so grab the block, call it and memoize it
       # return the block's return value, or nil.
-      if block = @blocks.delete(name)
-        @values[name] = block.call self, @env
+      if block = blocks[name]
+        begin
+          value = block.call self, env
+          values[name] = value
+          blocks.delete name
+          return value
+        rescue => e
+          raise Serf::Errors::LoadFailure.new("Name: #{name}", e)
+        end
       end
     end
 

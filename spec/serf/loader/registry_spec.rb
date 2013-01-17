@@ -1,5 +1,6 @@
 require 'spec_helper'
 
+require 'serf/errors/load_failure'
 require 'serf/loader/registry'
 
 describe Serf::Loader::Registry do
@@ -56,6 +57,20 @@ describe Serf::Loader::Registry do
 
     it 'returns nil on not found' do
       expect(subject[random_message]).to be_nil
+    end
+  end
+
+  context '#[] with error' do
+    it 'raises LoadFailure on error' do
+      subject.add 'component_name' do
+        raise 'Intentional Error'
+      end
+      expect {
+        subject['component_name']
+      }.to raise_error { |error|
+        expect(error).to be_a(Serf::Errors::LoadFailure)
+        expect(error.message).to match(/^Name: .+$/)
+      }
     end
   end
 

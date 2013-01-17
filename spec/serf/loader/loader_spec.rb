@@ -1,5 +1,6 @@
 require 'spec_helper'
 
+require 'serf/errors/load_failure'
 require 'serf/loader/loader'
 
 describe Serf::Loader::Loader do
