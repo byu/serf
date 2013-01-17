@@ -2,6 +2,7 @@ require 'hashie'
 require 'optser'
 
 require 'serf/builder'
+require 'serf/errors/load_failure'
 require 'serf/loader/registry'
 
 module Serf
@@ -63,9 +64,13 @@ module Loader
       globs.each do |glob_pattern|
         globs = Dir.glob File.join(base_path, glob_pattern)
         globs.each do |filename|
-          File.open filename do |file|
-            contents = file.read
-            instance_eval(contents)
+          begin
+            File.open filename do |file|
+              contents = file.read
+              instance_eval(contents)
+            end
+          rescue => e
+            raise Serf::Errors::LoadFailure.new "File: #{filename}", e
           end
         end
       end
@@ -73,7 +78,11 @@ module Loader
       # Construct all the "serfs"
       map = Hashie::Mash.new
       serfs.each do |serf|
-        map[serf] = @registry[serf]
+        begin
+          map[serf] = @registry[serf]
+        rescue => e
+          raise Serf::Errors::LoadFailure.new "Kind: #{serf}", e
+        end
         raise "Missing Serf: #{serf}" if map[serf].nil?
       end
 
