@@ -1,10 +1,18 @@
-# Gemfile.lock because this is a library, not a deployable application.
-Gemfile.lock
-coverage
-rdoc
-doc
-.yardoc
+*.gem
+*.rbc
 .bundle
-vendor
+.config
+.yardoc
+Gemfile.lock
+InstalledFiles
+_yardoc
+coverage
+doc/
+lib/bundler/man
 pkg
+rdoc
+spec/reports
+test/tmp
+test/version_tmp
 tmp
+vendor
