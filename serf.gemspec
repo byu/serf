@@ -1,9 +1,11 @@
 # -*- encoding: utf-8 -*-
-require File.expand_path('../lib/serf/version', __FILE__)
+lib = File.expand_path('../lib', __FILE__)
+$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require 'serf/version'
 
 Gem::Specification.new do |gem|
   gem.name        = 'serf'
-  gem.version     = Serf::Version::STRING
+  gem.version     = Serf::VERSION
   gem.authors     = ['Benjamin Yu']
   gem.email       = 'benjaminlyu@gmail.com'
   gem.description = 'Interactors with policy protection'

@@ -1,11 +1,3 @@
 module Serf
-
-  module Version
-    MAJOR = 0
-    MINOR = 14
-    PATCH = 0
-    BUILD = nil
-    STRING = [MAJOR, MINOR, PATCH, BUILD].compact.join '.'
-  end
-
+  VERSION = '0.14.0'
 end
