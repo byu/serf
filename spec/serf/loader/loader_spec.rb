@@ -1,5 +1,6 @@
 require 'spec_helper'
 
+require 'serf/errors/load_failure'
 require 'serf/loader/loader'
 
 describe Serf::Loader::Loader do
@@ -14,7 +15,8 @@ describe Serf::Loader::Loader do
     subject {
       Serf::Loader::Loader.new.serfup(
         globs: [
-          'example/**/*.serf'
+          'example/components/**/*.serf',
+          'example/serfs/**/*.serf'
         ],
         serfs: [
           'subsystem/requests/create_widget'
@@ -67,6 +69,46 @@ describe Serf::Loader::Loader do
       expect {
         Serf::Loader::Loader.new.serfup serfup_config
       }.to raise_error('Missing Serf: subsystem/requests/create_widget')
+    end
+  end
+
+  context '#serfup with construction error' do
+    let(:serfup_config) {
+      Hashie::Mash.new(
+        globs: [
+          'spec/data/construction_error.serf'
+        ],
+        serfs: [
+          'spec/data/bad_construction'
+        ])
+    }
+
+    it 'raises an error' do
+      expect {
+        Serf::Loader::Loader.new.serfup serfup_config
+      }.to raise_error { |error|
+        expect(error).to be_a(Serf::Errors::LoadFailure)
+        expect(error.message).to match(/Kind: .+$/)
+      }
+    end
+  end
+
+  context '#serfup Serf Map bad serf file' do
+    let(:serfup_config) {
+      Hashie::Mash.new(
+        globs: [
+          'spec/data/raises_error.serf'
+        ],
+        serfs: [])
+    }
+
+    it 'raises an error' do
+      expect {
+        Serf::Loader::Loader.new.serfup serfup_config
+      }.to raise_error { |error|
+        expect(error).to be_a(Serf::Errors::LoadFailure)
+        expect(error.message).to match(/^File: .+$/)
+      }
     end
   end
 

@@ -3,16 +3,29 @@
   "type": "object",
   "properties": {
     "error": {
-      "type": "string"
+      "description": "The error class",
+      "type": "string",
+      "required": true
     },
     "message": {
-      "type": "string"
+      "description": "The description of the error",
+      "type": "string",
+      "required": true
     },
     "process_env": {
-      "type": "object"
+      "description": "The ENV context of the error",
+      "type": "object",
+      "required": true
+    },
+    "hostname": {
+      "description": "The hostname of the process of the error",
+      "type": "string",
+      "required": true
     },
     "backtrace": {
-      "type": "string"
+      "description": "The backtrace of the error",
+      "type": "string",
+      "required": true
     }
   }
 }

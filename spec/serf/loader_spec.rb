@@ -14,7 +14,8 @@ describe Serf::Loader do
     subject {
       Serf::Loader.serfup(
         globs: [
-          'example/**/*.serf'
+          'example/components/**/*.serf',
+          'example/serfs/**/*.serf'
         ],
         serfs: [
           'subsystem/requests/create_widget'

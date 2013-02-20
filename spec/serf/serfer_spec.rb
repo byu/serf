@@ -11,10 +11,19 @@ describe Serf::Serfer do
     let(:request_parcel) {
       FactoryGirl.create :random_parcel
     }
+    let(:versioned_response_kind_version) {
+      SecureRandom.hex
+    }
+    let(:versioned_response_kind) {
+      "#{response_kind}\##{versioned_response_kind_version}"
+    }
     let(:response_kind) {
       SecureRandom.hex
     }
     let(:response_message) {
+      FactoryGirl.create :random_hash
+    }
+    let(:response_headers) {
       FactoryGirl.create :random_hash
     }
     let(:disconnected_response_parcel) {
@@ -49,19 +58,106 @@ describe Serf::Serfer do
       expect(parcel.message).to eq(response_message)
     end
 
-    it 'uses parcel factory w/ kind, parent and message' do
+    it 'uses parcel factory w/ parent (w/ nil kind+message+headers)' do
+      mock_parcel_factory = double 'parcel_factory'
+      mock_parcel_factory.
+        should_receive(:create).
+        with({
+          parent: request_parcel,
+          kind: nil,
+          message: nil,
+          headers: nil
+        }).
+        and_return(disconnected_response_parcel)
+
+      serfer = described_class.new(
+        lambda { |obj| },
+        parcel_factory: mock_parcel_factory)
+      parcel = serfer.call request_parcel
+
+      expect(parcel).to eq(disconnected_response_parcel)
+    end
+
+    it 'uses parcel factory w/ kind, parent (w/ nil message+headers)' do
       mock_parcel_factory = double 'parcel_factory'
       mock_parcel_factory.
         should_receive(:create).
         with({
           parent: request_parcel,
           kind: response_kind,
-          message: response_message
+          message: nil,
+          headers: nil
+        }).
+        and_return(disconnected_response_parcel)
+
+      serfer = described_class.new(
+        lambda { |obj| return response_kind },
+        parcel_factory: mock_parcel_factory)
+      parcel = serfer.call request_parcel
+
+      expect(parcel).to eq(disconnected_response_parcel)
+    end
+
+    it 'uses parcel factory w/ kind, parent and message (w/ nil headers)' do
+      mock_parcel_factory = double 'parcel_factory'
+      mock_parcel_factory.
+        should_receive(:create).
+        with({
+          parent: request_parcel,
+          kind: response_kind,
+          message: response_message,
+          headers: nil
         }).
         and_return(disconnected_response_parcel)
 
       serfer = described_class.new(
         lambda {|obj| return response_kind, response_message },
+        parcel_factory: mock_parcel_factory)
+      parcel = serfer.call request_parcel
+
+      expect(parcel).to eq(disconnected_response_parcel)
+    end
+
+    it 'uses parcel factory w/ kind, parent, message and headers' do
+      mock_parcel_factory = double 'parcel_factory'
+      mock_parcel_factory.
+        should_receive(:create).
+        with({
+          parent: request_parcel,
+          kind: response_kind,
+          message: response_message,
+          headers: response_headers
+        }).
+        and_return(disconnected_response_parcel)
+
+      serfer = described_class.new(
+        lambda { |obj|
+          return response_kind, response_message, response_headers
+        },
+        parcel_factory: mock_parcel_factory)
+      parcel = serfer.call request_parcel
+
+      expect(parcel).to eq(disconnected_response_parcel)
+    end
+
+    it 'moves version info from a versioned kind to the headers' do
+      mock_parcel_factory = double 'parcel_factory'
+      mock_parcel_factory.
+        should_receive(:create).
+        with({
+          parent: request_parcel,
+          kind: response_kind,
+          message: response_message,
+          headers: {
+            version: versioned_response_kind_version
+          }
+        }).
+        and_return(disconnected_response_parcel)
+
+      serfer = described_class.new(
+        lambda { |obj|
+          return versioned_response_kind, response_message
+        },
         parcel_factory: mock_parcel_factory)
       parcel = serfer.call request_parcel
 

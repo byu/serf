@@ -1,0 +1,3 @@
+registry.add 'spec/data/bad_construction' do |r, env|
+  raise 'Intentional Construction Error'
+end

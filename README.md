@@ -31,13 +31,20 @@ the Domain Layer's Model (Entities, Value Objects and Entity Gateways).
 
 1. Include the "Serf::Interactor" module in your class.
 2. Implement the 'call(parcel)' method.
-3. Return the tuple: (kind, message)
+3. Return the tuple: (kind, message, headers)
   a. The kind is the string representation of the message type,
     This field is RECOMMENDED.
   b. The message field provides detailed return data about the
-    interactor's processing.
+    interactor's processing. The main meat of the Domain Object.
     Hashie::Mash is suggested for the message, nil is acceptable.
-  c. By default, returning nil for both kind and message will still
+  c. The headers are OPTIONAL. The headers are there primarily to return
+    out of band data about the processing of the request. For example,
+    the Interactor can return debug tags about connections to external
+    databases.
+    The *ONE* semantic relevant piece of information is that the
+    Interactor may specify the version the domain object, as represented
+    by the message of type 'kind', in the 'version' header field.
+  d. By default, returning nil for both kind and message will still
     result in a response parcel signifying that some Interactor received
     the inbound parcel. But that is just a almost worthless piece of
     information for the observer.
@@ -106,6 +113,7 @@ For example,
 Serf *RESERVES* the following set of header names:
 
 * kind
+* version
 * message
 * uuid
 * parent_uuid
@@ -133,6 +141,13 @@ the Interactor for it to process a Request or Event Message.
 may be used to route messages over messaging channels to Interactors.
 The convention is 'mymodule/requests/my_business_request' for Requests,
 and 'mymodule/events/my_business_event' for Events.
+
+*version* field MAY be used to identify the semantic version of the
+  message of the given 'kind'. The triplet of (kind, version, message)
+  constitutes the prime parts of domain object as represented by the
+  parcel. All other header fields are incidental data that pertain to
+  the processing. This field is optional, and is returned in the
+  headers portion of the interactor's return results.
 
 *UUIDs* are used to track request and events, providing a sequential
 order of execution of commands. Already Implemented by Serf middleware.
@@ -320,7 +335,9 @@ Serf Builder Example
         raise 'Error' if parcel.message.raise_an_error
 
         # And return a message as result. Nil is valid response.
-        return 'my_lib/events/success_event', { success: true }
+        return 'my_lib/events/success_event',
+          { success: true },
+          { version: "1.2.3" }
 
         # Optionally just return the kind
         # return 'my_lib/events/success_event'
